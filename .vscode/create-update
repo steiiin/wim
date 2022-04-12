@@ -1,0 +1,49 @@
+#!/bin/bash
+echo "[ .. ] > Generiere UPDATE-Datei ..."
+
+oldRev=$(<cli-revision)
+newRev=`expr $oldRev + 1`
+echo "$newRev" >| cli-revision 
+cd ../
+
+genString="{"
+
+# Metadaten generieren
+
+TIMESTAMP=`date -u +"%Y-%m-%dT%TZ"`
+VERSION=$(<./.vscode/cli-version)
+REV=$newRev
+
+
+echo "       > TIMESTAMP: $TIMESTAMP"
+echo "       > VERSION: $VERSION"
+echo "       > REVISION: $REV"
+
+genString+="\"version\":$VERSION,"
+genString+="\"revision\":$REV,"
+genString+="\"timestamp\":\"$TIMESTAMP\","
+genString+="\"workdir\":["
+
+# Arbeitsbereich überprüfen
+
+echo "       > Überprüfe Arbeitsbereich ..."
+first=1
+
+for f in `find ./ -type f -not -path "*/.git*" -not -path "*/.vscode*" -not -name "UPDATE" -printf '%P\n'`; do
+    if [ "$first" -eq "0" ]; then
+        genString+=","
+    fi
+
+    modified=`date -u -r $f +"%Y-%m-%dT%TZ"`
+
+    genString+="{\"path\":\"$f\","
+    genString+="\"changed\":\"$modified\"}"
+
+    first=0
+done
+
+genString+="]}"
+
+echo $genString > UPDATE
+
+echo "[ OK ] > Fertig."

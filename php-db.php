@@ -1278,6 +1278,9 @@ class Settings {
 
 class Update {
 
+    private $UPDATE_LOCAL;
+    private $UPDATE_REMOTE;
+
     public function __construct() {
 
     }
@@ -1293,11 +1296,11 @@ class Update {
             return false; }
 
         // Durchführen
-        foreach ($UPDATE_LOCAL->workdir as $item) 
+        foreach ($this->UPDATE_LOCAL->workdir as $item) 
         {
 
             $hasFound = false;
-            foreach ($UPDATE_REMOTE->workdir as $remoteItem) 
+            foreach ($this->UPDATE_REMOTE->workdir as $remoteItem) 
             {
 
                 // Wenn Übereinstimmung, dann Fetch vom Server, wenn auf Server neuer
@@ -1327,11 +1330,11 @@ class Update {
 
         }
 
-        foreach ($UPDATE_REMOTE->workdir as $remoteItem) 
+        foreach ($this->UPDATE_REMOTE->workdir as $remoteItem) 
         {
 
             $hasFound = false;
-            foreach ($UPDATE_LOCAL->workdir as $item)
+            foreach ($this->UPDATE_LOCAL->workdir as $item)
             {
                 if ($item->path === $remoteItem->path) 
                 {
@@ -1366,19 +1369,19 @@ class Update {
         $statusRsp = curl_getinfo($handle, CURLINFO_HTTP_CODE);
         curl_close($handle);
     
-        $UPDATE_REMOTE = null;
+        $this->UPDATE_REMOTE = null;
         if ($statusRsp === 200) {
-            $UPDATE_REMOTE = json_decode($rawRsp);
+            $this->UPDATE_REMOTE = json_decode($rawRsp);
         } else { echo($statusRsp); }
     
         // Lokal-UPDATE laden
-        $UPDATE_LOCAL = json_decode(file_get_contents("UPDATE"));
+        $this->UPDATE_LOCAL = json_decode(file_get_contents("UPDATE"));
     
         // Wenn fehlende Datei, oder Lokal neuer als Remote > Abbrechen
-        if ($UPDATE_REMOTE == null || $UPDATE_REMOTE == null) { return false; }
+        if ($this->UPDATE_LOCAL == null || $this->UPDATE_REMOTE == null) { return false; }
     
-        $DATE_LOKAL = $this->GetLocalDateTimeFromString($UPDATE_LOCAL->timestamp);
-        $DATE_REMOTE = $this->GetLocalDateTimeFromString($UPDATE_REMOTE->timestamp);
+        $DATE_LOKAL = $this->GetLocalDateTimeFromString($this->UPDATE_LOCAL->timestamp);
+        $DATE_REMOTE = $this->GetLocalDateTimeFromString($this->UPDATE_REMOTE->timestamp);
         if ($DATE_LOKAL >= $DATE_REMOTE) { return false; }
     
         return true;

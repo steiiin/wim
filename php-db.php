@@ -1280,13 +1280,9 @@ class Update {
 
     public function __construct() {
 
-        LockDatabase();
-
     }
 
     public function __destruct() {
-
-        UnlockDatabase();
 
     }
 
@@ -1328,6 +1324,25 @@ class Update {
 
             // Wenn keine Übereinstimmung gefunden, dann löschen
             unlink($item->path);
+
+        }
+
+        foreach ($UPDATE_REMOTE->workdir as $remoteItem) 
+        {
+
+            $hasFound = false;
+            foreach ($UPDATE_LOCAL->workdir as $item)
+            {
+                if ($item->path === $remoteItem->path) 
+                {
+                    $hasFound = true;
+                    continue;
+                }
+            }
+            if ($hasFound) { continue; }
+
+            // Wenn lokal nicht vorhanden, herunterladen
+            $this->FetchUpdate($remoteItem->path);
 
         }
 
@@ -1385,6 +1400,9 @@ class Update {
             return false; }
     
     }
+
+    public function Reboot() {
+        file_put_contents("bin/cmd.reboot", ""); }
 
     // ################################################################################################
 

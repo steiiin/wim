@@ -1280,6 +1280,7 @@ class Update {
 
     private $UPDATE_LOCAL;
     private $UPDATE_REMOTE;
+    private $newUPDATE;
 
     public function __construct() {
 
@@ -1318,7 +1319,7 @@ class Update {
                     }
 
                     $hasFound = true;
-                    continue;
+                    break;
 
                 }
 
@@ -1339,7 +1340,7 @@ class Update {
                 if ($item->path === $remoteItem->path) 
                 {
                     $hasFound = true;
-                    continue;
+                    break;
                 }
             }
             if ($hasFound) { continue; }
@@ -1350,7 +1351,7 @@ class Update {
         }
 
         // Remote-Updatedatei in den Aktuellen Arbeitsordner schreiben
-        file_put_contents("UPDATE", $rawRsp);
+        file_put_contents("UPDATE", $this->newUPDATE);
 
         // Server neustarten
         shell_exec('systemctl reboot');
@@ -1365,13 +1366,13 @@ class Update {
         $handle = curl_init("https://raw.githubusercontent.com/steiiin/wim/main/UPDATE");
         curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($handle, CURLOPT_FRESH_CONNECT, true);
-        $rawRsp = curl_exec($handle);
+        $this->newUPDATE = curl_exec($handle);
         $statusRsp = curl_getinfo($handle, CURLINFO_HTTP_CODE);
         curl_close($handle);
     
         $this->UPDATE_REMOTE = null;
         if ($statusRsp === 200) {
-            $this->UPDATE_REMOTE = json_decode($rawRsp);
+            $this->UPDATE_REMOTE = json_decode($this->newUPDATE);
         } else { echo($statusRsp); }
     
         // Lokal-UPDATE laden

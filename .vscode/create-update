@@ -3,6 +3,7 @@ echo "[ .. ] > Generiere UPDATE-Datei ..."
 
 oldRev=$(<cli-revision)
 newRev=`expr $oldRev + 1`
+VERSION=$(<cli-version)
 echo "$newRev" >| cli-revision 
 cd ../
 
@@ -11,9 +12,7 @@ genString="{"
 # Metadaten generieren
 
 TIMESTAMP=`date -u +"%Y-%m-%dT%TZ"`
-VERSION=$(<./.vscode/cli-version)
 REV=$newRev
-
 
 echo "       > TIMESTAMP: $TIMESTAMP"
 echo "       > VERSION: $VERSION"

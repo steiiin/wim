@@ -219,11 +219,6 @@ switch ($paramAction) {
             //Hinweis auf Neustart, wenn Auflösung geändert
             $beforeWacheUI = $settings->GetWacheUiResolution();
             $settings->SetWacheUiResolution($WacheUI);
-            if ($beforeWacheUI != $WacheUI) {
-                $setMessage = "message=info";
-                $_SESSION['messageArgsTitle'] = "Neustart erforderlich";
-                $_SESSION['messageArgsBody'] = "Für die Änderung der Auflösung muss die WIM-Box neugestartet werden. <br><br>Aus Sicherheitsgründen funktioniert dies aber nicht von der Admin-Oberfläche aus. <br><br>Am Besten ziehst du kurz den Stecker an der WIM-Box - dann wird die neue Oberfläche geladen. 😁";  
-            }
 
             // Abfallkalender aktualisieren, wenn Link geändert.
             $beforeAutoAbfallLink = $settings->GetAutoAbfallLink();
@@ -237,6 +232,11 @@ switch ($paramAction) {
                 $settings->SetAutoMalteserPass($AutoMalteserPass);
                 include 'cron-auto-maltesercloud.php'; }
 
+            if ($beforeWacheUI != $WacheUI) {
+                $setMessage = "message=info";
+                $_SESSION['messageArgsTitle'] = "Neustart erforderlich";
+                $_SESSION['messageArgsBody'] = "Für die Änderung der Auflösung muss die WIM-Box neugestartet werden. <br><br>Aus Sicherheitsgründen funktioniert dies aber nicht von der Admin-Oberfläche aus. <br><br>Am Besten ziehst du kurz den Stecker an der WIM-Box - dann wird die neue Oberfläche geladen. 😁";  
+            }
             redirectToAdminWithArgs("entries-users-anchor", $setMessage);
 
         }

@@ -1,6 +1,8 @@
 #!/bin/bash
 echo "[ .. ] > Generiere UPDATE-Datei ..."
 
+cd /var/www/wim/.vscode
+
 oldRev=$(<cli-revision)
 newRev=`expr $oldRev + 1`
 VERSION=$(<cli-version)
@@ -43,6 +45,6 @@ done
 
 genString+="]}"
 
-echo $genString > UPDATE
+echo $genString >| UPDATE
 
 echo "[ OK ] > Fertig."

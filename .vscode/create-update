@@ -1,0 +1,41 @@
+#!/bin/bash
+echo "[ .. ] > Generiere UPDATE-Datei ..."
+
+cd /var/www/wim/
+TIMESTAMP=`date -u +%s`
+echo $TIMESTAMP >| UPDATE
+
+echo "[ OK ] > Fertig."
+
+cd .vscode/
+
+oldRev=$(<cli-revision)
+newRev=`expr $oldRev + 1`
+VERSION=$(<cli-version)
+echo "$newRev" >| cli-revision 
+
+echo "       > VERSION: $VERSION"
+echo "       > REVISION: $newRev"
+
+exit 0;
+
+# Kann man vielleicht mal brauchen
+
+for f in `find ./ -type f -not -path "*/.git*" -not -path "*/.vscode*" -not -name "UPDATE" -printf '%P\n'`; do
+    if [ "$first" -eq "0" ]; then
+        genString+=","
+    fi
+
+    modified=`date -u -r $f +%s`
+
+    genString+="{\"path\":\"$f\","
+    genString+="\"changed\":\"$modified\"}"
+
+    first=0
+done
+
+genString+="]}"
+
+echo $genString >| UPDATE
+
+echo "[ OK ] > Fertig."

@@ -66,7 +66,7 @@
             $headers = array('X-RequestDigest' => $AUTH_bearer,
                              'Accept' => 'application/json; odata=verbose'); //application/json; odata=verbose');
 
-            $filterDateStart = gmdate("Y-m-d\TH:i:s\Z", strtotime('-1 days')); 
+            $filterDateStart = gmdate("Y-m-d\TH:i:s\Z", strtotime('-14 days')); 
             $filterDateEnd = gmdate("Y-m-d\TH:i:s\Z", strtotime('+30 days'));
 
             $url = 'https://maltesercloud.sharepoint.com/sites/hilfsdienst/2601/Fkt_Bereich_Mei/_api/lists(guid\'8e0ce127-04ab-4104-b85e-9efc97866402\')/items?$select=ID,GUID,Title,Description,EventDate,EndDate,fAllDayEvent,Category,Location&$filter=(EventDate ge datetime\''.$filterDateStart.'\') and (EventDate le datetime\''.$filterDateEnd.'\')&$orderby=EventDate%20asc';

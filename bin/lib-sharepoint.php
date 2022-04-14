@@ -17,8 +17,10 @@
             $this->username = $spUsername;
             $this->password = $spPassword;
 
+            $cookiePath = join(DIRECTORY_SEPARATOR, array(__DIR__, 'Unirest', 'cookieJar.txt'));
+
             // Cookiespeicher löschen
-            $f = fopen(join(DIRECTORY_SEPARATOR, array(__DIR__, 'Unirest', 'cookieJar.txt')), 'w');
+            $f = fopen($cookiePath, 'w');
             if ($f !== false) {
                 ftruncate($f, 0);
             } else {
@@ -29,7 +31,7 @@
             // Unirest konfigurieren
             Unirest\Request::defaultHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4482.0 Safari/537.36 Edg/92.0.874.0');
             Unirest\Request::defaultHeader('Accept-Language', 'de-DE');
-            Unirest\Request::cookieFile('/var/www/bin/Unirest/cookieJar.txt');
+            Unirest\Request::cookieFile($cookiePath);
 
         }
 
@@ -66,7 +68,7 @@
             $headers = array('X-RequestDigest' => $AUTH_bearer,
                              'Accept' => 'application/json; odata=verbose'); //application/json; odata=verbose');
 
-            $filterDateStart = gmdate("Y-m-d\TH:i:s\Z", strtotime('-14 days')); 
+            $filterDateStart = gmdate("Y-m-d\TH:i:s\Z", strtotime('-7 days')); 
             $filterDateEnd = gmdate("Y-m-d\TH:i:s\Z", strtotime('+30 days'));
 
             $url = 'https://maltesercloud.sharepoint.com/sites/hilfsdienst/2601/Fkt_Bereich_Mei/_api/lists(guid\'8e0ce127-04ab-4104-b85e-9efc97866402\')/items?$select=ID,GUID,Title,Description,EventDate,EndDate,fAllDayEvent,Category,Location&$filter=(EventDate ge datetime\''.$filterDateStart.'\') and (EventDate le datetime\''.$filterDateEnd.'\')&$orderby=EventDate%20asc';
@@ -271,7 +273,7 @@
             if ($response->code == 200) {
 
                 $SPOIDCRL = substr($response->headers['set-cookie'], stripos($response->headers['set-cookie'], 'SPOIDCRL='));
-                if ($SPOIDCRL == '') { substr($response->headers['Set-Cookie'], stripos($response->headers['Set-Cookie'], 'SPOIDCRL=')); }
+                if ($SPOIDCRL == '') { $SPOIDCRL = substr($response->headers['Set-Cookie'], stripos($response->headers['Set-Cookie'], 'SPOIDCRL=')); }
                 $SPOIDCRL = substr($SPOIDCRL, 0, stripos($SPOIDCRL, ';'));
                 $return['SPOIDCRL'] = $SPOIDCRL;
 

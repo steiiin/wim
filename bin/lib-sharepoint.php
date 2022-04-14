@@ -55,8 +55,8 @@
             $infoDigest = $this->GetLoginDigest($infoSp['binaryToken']);
             if ($infoDigest['Success'] == false) { return false; }
 
-            $AUTH_bearer = $infoDigest['DIGEST'];
-            $AUTH_spoidcrl = $infoDigest['SPOIDCRL'];
+            $this->AUTH_bearer = $infoDigest['DIGEST'];
+            $this->AUTH_spoidcrl = $infoDigest['SPOIDCRL'];
 
             return true;
 
@@ -65,13 +65,13 @@
         public function GetEvents() {
 
             // Kalenderdaten abrufen
-            $headers = array('X-RequestDigest' => $AUTH_bearer,
+            $headers = array('X-RequestDigest' => $this->AUTH_bearer,
                              'Accept' => 'application/json; odata=verbose'); //application/json; odata=verbose');
 
-            $filterDateStart = gmdate("Y-m-d\TH:i:s\Z", strtotime('-7 days')); 
+            $filterDateStart = gmdate("Y-m-d\TH:i:s\Z", strtotime('-1 days')); 
             $filterDateEnd = gmdate("Y-m-d\TH:i:s\Z", strtotime('+30 days'));
 
-            $url = 'https://maltesercloud.sharepoint.com/sites/hilfsdienst/2601/Fkt_Bereich_Mei/_api/lists(guid\'8e0ce127-04ab-4104-b85e-9efc97866402\')/items?$select=ID,GUID,Title,Description,EventDate,EndDate,fAllDayEvent,Category,Location&$filter=(EventDate ge datetime\''.$filterDateStart.'\') and (EventDate le datetime\''.$filterDateEnd.'\')&$orderby=EventDate%20asc';
+            $url = 'https://maltesercloud.sharepoint.com/sites/hilfsdienst/2601/Fkt_Bereich_Mei/_api/lists(guid\'8e0ce127-04ab-4104-b85e-9efc97866402\')/items?$select=ID,GUID,Title,Description,EventDate,EndDate,fAllDayEvent,Category,Location&$filter=(EndDate ge datetime\''.$filterDateStart.'\') and (EventDate le datetime\''.$filterDateEnd.'\')&$orderby=EventDate%20asc';
 
             $response = Unirest\Request::get($url, $headers);
             if ($response->code == 200) {
@@ -89,7 +89,9 @@
                         if (strlen($event['subtitle']) > 0) { $event['subtitle'] .= ' - '.$value->Location; }
                         else { $event['subtitle'] = $value->Location; }}
 
-                    $event['modified'] = $value->Modified;
+                        if($value->fAllDayEvent) {
+                            $vv = 0;
+                        }
                     $event['dateAllDay'] = $value->fAllDayEvent;
                     $event['dateStart'] = DateTime::createFromFormat('Y-m-d\TH:i:s\Z', $value->EventDate);
                     $event['dateEnd'] = DateTime::createFromFormat('Y-m-d\TH:i:s\Z', $value->EndDate);
@@ -272,8 +274,13 @@
             $response = Unirest\Request::get('https://maltesercloud.sharepoint.com/_vti_bin/idcrl.svc/', $headers);
             if ($response->code == 200) {
 
-                $SPOIDCRL = substr($response->headers['set-cookie'], stripos($response->headers['set-cookie'], 'SPOIDCRL='));
-                if ($SPOIDCRL == '') { $SPOIDCRL = substr($response->headers['Set-Cookie'], stripos($response->headers['Set-Cookie'], 'SPOIDCRL=')); }
+                $SPOIDCRL = '';
+                if (array_key_exists('set-cookie', $response->headers)) {
+                    $SPOIDCRL = substr($response->headers['set-cookie'], stripos($response->headers['set-cookie'], 'SPOIDCRL='));
+                } 
+                if (array_key_exists('Set-Cookie', $response->headers)) {
+                    $SPOIDCRL = substr($response->headers['Set-Cookie'], stripos($response->headers['Set-Cookie'], 'SPOIDCRL='));
+                }
                 $SPOIDCRL = substr($SPOIDCRL, 0, stripos($SPOIDCRL, ';'));
                 $return['SPOIDCRL'] = $SPOIDCRL;
 

@@ -1,7 +1,15 @@
 #!/bin/bash
 echo "[ .. ] > Generiere UPDATE-Datei ..."
 
-cd /var/www/wim/.vscode
+cd /var/www/wim/
+TIMESTAMP=`date -u +%s`
+echo $TIMESTAMP >| UPDATE
+
+echo "[ OK ] > Fertig."
+
+# Das ganze hier unten ist obsolet, da das ganze WIM von Github gezogen wird.
+
+exit 0;
 
 oldRev=$(<cli-revision)
 newRev=`expr $oldRev + 1`
@@ -13,7 +21,7 @@ genString="{"
 
 # Metadaten generieren
 
-TIMESTAMP=`date -u +"%Y-%m-%dT%TZ"`
+TIMESTAMP=`date -u +%s`
 REV=$newRev
 
 echo "       > TIMESTAMP: $TIMESTAMP"
@@ -35,7 +43,7 @@ for f in `find ./ -type f -not -path "*/.git*" -not -path "*/.vscode*" -not -nam
         genString+=","
     fi
 
-    modified=`date -u -r $f +"%Y-%m-%dT%TZ"`
+    modified=`date -u -r $f +%s`
 
     genString+="{\"path\":\"$f\","
     genString+="\"changed\":\"$modified\"}"

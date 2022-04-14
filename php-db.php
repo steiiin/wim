@@ -331,32 +331,6 @@ class UsersManager {
             return false;
         }
 
-        /*
-        // Tabelle 'Users' erstellen, wenn nicht vorhanden
-        $sql = "CREATE TABLE IF NOT EXISTS users (
-            ID int(11) AUTO_INCREMENT PRIMARY KEY,
-            LoginName text NOT NULL,
-            FullName text NOT NULL,
-            LoginPass text NOT NULL,
-            LoginSalt text NOT NULL,
-            WimAdmin tinyint(1) NOT NULL DEFAULT '0')";
-
-        if (!mysqli_query($conn, $sql)) {
-            error_log("Die WICO-Wachentabelle konnte nicht erstellt werden: " . mysqli_error($conn), 0);
-            return false;
-        }
-
-        // Tabelle 'Users' erstellen, wenn nicht vorhanden
-        $sql = "CREATE TABLE IF NOT EXISTS users (
-            ID int(11) AUTO_INCREMENT PRIMARY KEY,
-            LoginName text NOT NULL,
-            FullName text NOT NULL,
-            LoginPass text NOT NULL,
-            LoginSalt text NOT NULL,
-            WimAdmin tinyint(1) NOT NULL DEFAULT '0')";
-
-        */
-        
         $this->connection = $conn;
         return true;
 
@@ -1040,10 +1014,9 @@ class EntriesManager {
                         WHERE
                             (`TYPETAG` = '" . TypeTag::INFO . "' AND `DTSTART` IS NULL) OR
                             (`TYPETAG` = '" . TypeTag::INFO . "' AND `DTSTART` <= '$todayStart' AND `DTEND` >= '$todayNow') OR 
-                            (`TYPETAG` = '" . TypeTag::EVENT . "' AND `DT_HASTIMEVALUE` = 0 AND `DTSTART` BETWEEN '$todayStart' AND '$todayEnd') OR
-                            (`TYPETAG` = '" . TypeTag::EVENT . "' AND `DT_HASTIMEVALUE` = 0 AND `DTEND` BETWEEN '$todayStart' AND '$todayEnd') OR
-                            (`TYPETAG` = '" . TypeTag::EVENT . "' AND `DT_HASTIMEVALUE` = 1 AND `DTSTART` BETWEEN '$todayNow' AND '$todayEnd') OR
-                            (`TYPETAG` = '" . TypeTag::EVENT . "' AND `DT_HASTIMEVALUE` = 1 AND `DTEND` BETWEEN '$todayStart' AND '$todayNow')
+                            (`TYPETAG` = '" . TypeTag::EVENT . "' AND `DT_HASTIMEVALUE` = 0 AND `DTSTART` <= '$todayStart') OR
+                            (`TYPETAG` = '" . TypeTag::EVENT . "' AND `DT_HASTIMEVALUE` = 0 AND `DTEND` >= '$todayNow') OR
+                            (`TYPETAG` = '" . TypeTag::EVENT . "' AND `DT_HASTIMEVALUE` = 1 AND `DTSTART` <= '$todayNow' AND `DTEND` > '$todayNow')
                         ORDER BY `TYPETAG` DESC, `TIMETAG` DESC";
 
             case RequestType::TASK:

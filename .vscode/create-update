@@ -7,36 +7,19 @@ echo $TIMESTAMP >| UPDATE
 
 echo "[ OK ] > Fertig."
 
-# Das ganze hier unten ist obsolet, da das ganze WIM von Github gezogen wird.
-
-exit 0;
+cd .vscode/
 
 oldRev=$(<cli-revision)
 newRev=`expr $oldRev + 1`
 VERSION=$(<cli-version)
 echo "$newRev" >| cli-revision 
-cd ../
 
-genString="{"
-
-# Metadaten generieren
-
-TIMESTAMP=`date -u +%s`
-REV=$newRev
-
-echo "       > TIMESTAMP: $TIMESTAMP"
 echo "       > VERSION: $VERSION"
-echo "       > REVISION: $REV"
+echo "       > REVISION: $newRev"
 
-genString+="\"version\":$VERSION,"
-genString+="\"revision\":$REV,"
-genString+="\"timestamp\":\"$TIMESTAMP\","
-genString+="\"workdir\":["
+exit 0;
 
-# Arbeitsbereich überprüfen
-
-echo "       > Überprüfe Arbeitsbereich ..."
-first=1
+# Kann man vielleicht mal brauchen
 
 for f in `find ./ -type f -not -path "*/.git*" -not -path "*/.vscode*" -not -name "UPDATE" -printf '%P\n'`; do
     if [ "$first" -eq "0" ]; then

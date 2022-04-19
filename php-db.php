@@ -1219,6 +1219,7 @@ class Settings {
                 `LastUser` text,
                 `WacheName` text,
                 `WacheUI` text,
+                `WacheKfz` text,
                 `auto-AbfallLink` text,
                 `auto-MalteserUser` text,
                 `auto-MalteserPass` text)";
@@ -1233,8 +1234,8 @@ class Settings {
         $rtn = mysqli_query($conn, $sql);
         if ($rtn == false || $rtn->num_rows == 0) {
 
-            $sql = "INSERT INTO `settings` (`ID`,`LastUpdate`, `LastUser`, `WacheName`,`WacheUI`,`auto-AbfallLink`)
-                    VALUES (1,null,'Standardeinstellungen','Neue Wache','','')";
+            $sql = "INSERT INTO `settings` (`ID`,`LastUpdate`, `LastUser`, `WacheName`,`WacheKfz`,`WacheUI`,`auto-AbfallLink`)
+                    VALUES (1,null,'Standardeinstellungen','Neue Wache','','','')";
 
             if (!mysqli_query($conn, $sql)) {
                 error_log("Die WIM-Einstellungen konnten nicht zurückgesetzt werden: " . mysqli_error($conn), 0);

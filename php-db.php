@@ -37,15 +37,6 @@ class AutoTag
 
 }
 
-class Configuration
-{
-
-    public const DB_SERVER = 'localhost';
-    public const DB_USER = 'root';
-    public const DB_PASS = 'Wim2021!';
-
-}
-
 // ######################################################################################
 // DATENBANK-KLASSEN
 
@@ -1255,8 +1246,10 @@ class Settings {
 
 function DatabaseConnect() {
 
+    $Config = include('config.php');
+
     // Verbinden
-    $conn = new mysqli(Configuration::DB_SERVER, Configuration::DB_USER, Configuration::DB_PASS);
+    $conn = new mysqli($Config['DB_SERVER'], $Config['DB_USER'], $Config['DB_PASS']);
     if ($conn->connect_error) {
         error_log('Verbindung zur WICO-Datenbank fehlgeschlagen: ' . $conn->connect_error, 0);
         return false;
@@ -1269,7 +1262,7 @@ function DatabaseConnect() {
         return false;
     }
 
-    $conn = new mysqli(Configuration::DB_SERVER, Configuration::DB_USER, Configuration::DB_PASS, 'wim');
+    $conn = new mysqli($Config['DB_SERVER'], $Config['DB_USER'], $Config['DB_PASS'], 'wim');
     if ($conn->connect_error) {
         error_log('Verbindung zur WIM-Datenbank fehlgeschlagen: ' . $conn->connect_error, 0);
         return false;

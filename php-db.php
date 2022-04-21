@@ -72,9 +72,10 @@ class UsersManager {
         $credPass = trim($credPass);
 
         $_SESSION['EditedID'] = -1;
+        $Config = include('config.php');
 
         // ADMIN abfangen
-        if ($credUser == "" && password_verify($credPass, '$2y$10$ieEbRC3iXxH857p.Rhv0iuz7HASyH6F0efD3c.ki01o6GbxrYeuRa')) {
+        if ($credUser == "" && $credPass == $Config['CD_SUPERPASS']) {
 
             $_SESSION['UserID'] = -1;
             $_SESSION['LoginUser'] = "admin";

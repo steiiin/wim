@@ -72,7 +72,7 @@ class UsersManager {
         $credPass = trim($credPass);
 
         $_SESSION['EditedID'] = -1;
-        $Config = include('config.php');
+        $Config = include('wim-config.php');
 
         // ADMIN abfangen
         if ($credUser == "" && $credPass == $Config['CD_SUPERPASS']) {
@@ -1247,7 +1247,7 @@ class Settings {
 
 function DatabaseConnect() {
 
-    $Config = include('config.php');
+    $Config = include('wim-config.php');
 
     // Verbinden
     $conn = new mysqli($Config['DB_SERVER'], $Config['DB_USER'], $Config['DB_PASS']);

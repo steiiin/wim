@@ -11,13 +11,14 @@ Serveranwendung zur Anzeige von Informationen, Terminen und Aufgaben.
 
 ### Konfiguration
 Im IncludeOrdner des php-preprocessors muss ein Dokument namens 'wim-config.php' mit folgendem Inhalt erstellt werden:
-    <?php
-       return [
-       'DB_SERVER' => 'localhost',
-       'DB_USER' => 'root',
-       'DB_PASS' => 'default',
-       'CD_SUPERPASS' => 'default'
-       ];
-    ?>
-
+```
+<?php
+  return [
+  'DB_SERVER' => 'localhost',
+  'DB_USER' => 'root',
+  'DB_PASS' => 'default',
+  'CD_SUPERPASS' => 'default'
+  ];
+?>
+```
 Diese kann an den Server angepasst werden.

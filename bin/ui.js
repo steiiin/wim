@@ -513,7 +513,7 @@ var editors = {
         if (editors.getValueEditor("editor-settings-input-wachekfz").match(/^(<option value="[A-Za-z 0-9]*">[A-Za-z 0-9\(\)]*<\/option>[\r\n]?)+$/i) === null) {
             isValid = false; }
 
-        if (editors.getValueEditor("editor-settings-input-autoabfalllink").match(/^https:\/\/www\.zaoe\.de\/ical\/([0-9\/\-_]+)$/) === null) {
+        if (editors.getValueEditor("editor-settings-input-autoabfalllink").match(/^https:\/\/www\.zaoe\.de\/kalender\/ical\/([0-9\/\-_]+)$/) === null) {
             isValid = false; }
 
         if (editors.getValueEditor("editor-settings-input-automalteseruser").match(/[a-zA-Z]+\.[a-zA-Z]+@malteser\.org/i) === null) {

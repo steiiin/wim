@@ -8,7 +8,7 @@ $settings = new Settings();
 if ($settings->isReady) {
 
     $url = $settings->GetAutoAbfallLink();
-    if (preg_match("/^https:\/\/www\.zaoe\.de\/ical\/([0-9\/\-_]+)$/", $url)) {
+    if (preg_match("/^https:\/\/www\.zaoe\.de\/kalender\/ical\/([0-9\/\-_]+)$/", $url)) {
 
         require 'bin/lib-ical.php';
         $entriesManager = new EntriesManager();

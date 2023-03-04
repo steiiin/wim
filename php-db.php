@@ -632,6 +632,8 @@ class EntriesManager {
             $dateObjEnd = ($row->DTEND != null ? DateTime::createFromFormat("Y-m-d H:i:s", $row->DTEND) : false);
             
             $dateCalcStartEndSame = ($dateObjEnd !== false && $dateObjStart !== false) ? ($dateObjStart->format("d.m.y") == $dateObjEnd->format("d.m.y")) : false;
+            $dateCalcStartIsToday = $nowDate == $dateObjStart->format("d.m.y");
+            $dateCalcEndIsToday = $dateObjEnd !== false ? ($nowDate == $dateObjEnd->format("d.m.y")) : $dateCalcStartIsToday;
 
             switch ($row->TYPETAG) {
                 case TypeTag::INFO:
@@ -660,19 +662,48 @@ class EntriesManager {
                     $hasTime = $row->DT_HASTIMEVALUE == "1" ? 1 : 0;
 
                     $dateFormatStart = $hasTime === 1 ? "d.m.y H:i" : "d.m.y";
-                    $dateFormatEnd = $dateCalcStartEndSame ? "H:i" : $dateFormatStart;
-                    if ($dateCalcStartEndSame && $nowDate == $dateObjStart->format("d.m.y")) { $dateFormatStart = "H:i"; }
-                    $deadline = ($dateObjEnd != null ? " - {$dateObjEnd->format($dateFormatEnd)}" : "");
+                    $dateFormatEnd = $dateCalcStartEndSame && $hasTime === 1 ? "H:i" : $dateFormatStart;
 
+                    $deadline = "";
+                    if ($requestType == RequestType::EVENT) {
+
+                        if ($dateCalcStartIsToday && !$adminView) {
+
+                            if ($hasTime === 1) { $dateFormatStart = "H:i"; }
+    
+                        }
+
+                        $deadline = $dateObjStart->format($dateFormatStart);
+                        $deadline .= ($dateObjEnd != null ? " - {$dateObjEnd->format($dateFormatEnd)}" : "");
+
+                    }
+                    else if ($requestType == RequestType::INFO) {
+
+                        if ($dateCalcEndIsToday && !$adminView) {
+
+                            if ($hasTime === 1) { $dateFormatEnd = "H:i"; }
+    
+                        }
+
+                        $deadline = ($dateObjEnd != null ? " - bis {$dateObjEnd->format($dateFormatEnd)}" : "");
+
+                    }
+                    else {
+
+                        $deadline = $dateObjStart->format($dateFormatStart);
+                        $deadline .= ($dateObjEnd != null ? " - {$dateObjEnd->format($dateFormatEnd)}" : "");
+                        
+                    }
+                    
                     $title = !$adminView && $requestType == RequestType::INFO ? "{$row->TITLE} {$deadline}" : "$row->TITLE";
 
                     $html .= ($adminView ? "<li class=\"editable\">" : "<li>");
                     $html .= ($adminView ? "<button onclick=\"editors.editorEventEdit($row->ID, &quot;$row->TITLE&quot;, &quot;$row->SUBTITLE&quot;, &quot;$row->DTSTART&quot;, &quot;$row->DTEND&quot;, $hasTime);\">&nbsp;</button>" : "");
                                 
                     $html .= "<div class=\"title\">$title</div>";
-                    $html .= $requestType != RequestType::EVENT /**/ || true/*|| $isFirst*/ ? "<div class=\"subtext\">$row->SUBTITLE</div>" : "";
+                    $html .= "<div class=\"subtext\">$row->SUBTITLE</div>";
     
-                    $html .= $adminView || $requestType == RequestType::EVENT ? "<div class=\"subtext\">{$dateObjStart->format($dateFormatStart)}{$deadline}</div>" : ""; 
+                    $html .= $adminView || $requestType == RequestType::EVENT ? "<div class=\"subtext\">{$deadline}</div>" : ""; 
                               
                     $html .= ($adminView && ($row->USERTAG != $_SESSION['LoginUser']) ? "<div class=\"usertag\">von: @$row->USERTAG</div>" : "");
                     $html .= "<hr>";
@@ -963,10 +994,12 @@ class EntriesManager {
 
         // Tabelle von alten Einträgen säubern
         $todayNow = date("Y-m-d H:i:s");
+        $todayStart = date("Y-m-d")." 00:00";
+        $todayEnd = date("Y-m-d")." 23:59";
         $sql = "DELETE FROM `entries`
                 WHERE
-                    (DTEND IS NULL AND DTSTART < '$todayNow') OR
-                    (DTEND < '$todayNow')";
+                    (DTEND IS NULL AND DTSTART < '$todayStart') OR
+                    (DTEND < '$todayStart')";
         mysqli_query($conn, $sql);
 
         $sql = "DELETE FROM `replacement`
@@ -1007,8 +1040,8 @@ class EntriesManager {
                             (`TYPETAG` = '" . TypeTag::INFO . "' AND `DTSTART` IS NULL) OR
                             (`TYPETAG` = '" . TypeTag::INFO . "' AND `DTSTART` <= '$todayStart' AND `DTEND` >= '$todayNow') OR 
                             (`TYPETAG` = '" . TypeTag::EVENT . "' AND `DT_HASTIMEVALUE` = 0 AND `DTSTART` <= '$todayStart') OR
-                            (`TYPETAG` = '" . TypeTag::EVENT . "' AND `DT_HASTIMEVALUE` = 0 AND `DTEND` >= '$todayNow') OR
-                            (`TYPETAG` = '" . TypeTag::EVENT . "' AND `DT_HASTIMEVALUE` = 1 AND `DTSTART` <= '$todayNow' AND `DTEND` > '$todayNow')
+                            (`TYPETAG` = '" . TypeTag::EVENT . "' AND `DT_HASTIMEVALUE` = 1 AND `DTSTART` <= '$todayNow' AND `DTEND` IS NULL) OR
+                            (`TYPETAG` = '" . TypeTag::EVENT . "' AND `DT_HASTIMEVALUE` = 1 AND `DTSTART` <= '$todayNow' AND `DTEND` >= '$todayNow')
                         ORDER BY `TYPETAG` DESC, `TIMETAG` DESC";
 
             case RequestType::TASK:
@@ -1042,7 +1075,7 @@ class EntriesManager {
             case RequestType::EVENT:
                 return "SELECT `ID`, `TIMETAG`, `USERTAG`, `TYPETAG`, `AUTOTAG`, `TITLE`, `SUBTITLE`, `DTSTART`, `DTEND`, `DT_HASTIMEVALUE`, `TASK_VEHICLE`, `TASK_SHOWINEVENTS`, `CYCL_WEEKDAY`, `CYCL_DAYOFMONTH` FROM `entries`
                         WHERE
-                            (`TYPETAG` = '" . TypeTag::EVENT . "' AND `DTSTART` > '$todayEnd') OR
+                            (`TYPETAG` = '" . TypeTag::EVENT . "' AND `DTSTART` > '$todayNow') OR
                             (`TYPETAG` = '" . TypeTag::UNIQUETASK . "' AND `DTSTART` > '$todayNow' AND `TASK_SHOWINEVENTS` > 0)
                         ORDER BY `DTSTART` ASC";
 

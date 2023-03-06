@@ -29,7 +29,7 @@ if ($settings->isReady) {
                     
                     // Aus dem Kalender nur bis Abend anzeigen
                     $dateStart = $value['dateStart']->format('Y-m-d').' 00:00';
-                    $dateEnd = $value['dateStart']->format('Y-m-d').' 18:00';
+                    $dateEnd = $value['dateEnd']->format('Y-m-d').' 18:00';
                     $hasTime = 1;
                     
                 }

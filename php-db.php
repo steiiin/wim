@@ -1042,7 +1042,8 @@ class EntriesManager {
                             (`TYPETAG` = '" . TypeTag::INFO . "' AND `DTSTART` <= '$todayStart' AND `DTEND` >= '$todayNow') OR 
                             (`TYPETAG` = '" . TypeTag::EVENT . "' AND `DT_HASTIMEVALUE` = 0 AND `DTSTART` <= '$todayStart') OR
                             (`TYPETAG` = '" . TypeTag::EVENT . "' AND `DT_HASTIMEVALUE` = 1 AND `DTSTART` <= '$todayNow' AND `DTEND` IS NULL) OR
-                            (`TYPETAG` = '" . TypeTag::EVENT . "' AND `DT_HASTIMEVALUE` = 1 AND `DTSTART` <= '$todayNow' AND `DTEND` >= '$todayNow')
+                            (`TYPETAG` = '" . TypeTag::EVENT . "' AND `DT_HASTIMEVALUE` = 1 AND `DTSTART` <= '$todayNow' AND `DTEND` >= '$todayNow') OR
+                            (`TYPETAG` = '" . TypeTag::EVENT . "' AND `DT_HASTIMEVALUE` = 2 AND `DTSTART` <= '$todayNow' AND `DTEND` >= '$todayNow')
                         ORDER BY `TYPETAG` DESC, `TIMETAG` DESC";
 
             case RequestType::TASK:

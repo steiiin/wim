@@ -632,7 +632,7 @@ class EntriesManager {
             $dateObjEnd = ($row->DTEND != null ? DateTime::createFromFormat("Y-m-d H:i:s", $row->DTEND) : false);
             
             $dateCalcStartEndSame = ($dateObjEnd !== false && $dateObjStart !== false) ? ($dateObjStart->format("d.m.y") == $dateObjEnd->format("d.m.y")) : false;
-            $dateCalcStartIsToday = $nowDate == $dateObjStart->format("d.m.y");
+            $dateCalcStartIsToday = $dateObjStart !== false ? ($nowDate == $dateObjStart->format("d.m.y")) : true;
             $dateCalcEndIsToday = $dateObjEnd !== false ? ($nowDate == $dateObjEnd->format("d.m.y")) : $dateCalcStartIsToday;
 
             switch ($row->TYPETAG) {

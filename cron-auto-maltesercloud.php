@@ -26,11 +26,19 @@ if ($settings->isReady) {
                 $dateEnd = null;
 
                 if ($value['dateAllDay']) {
-                    $dateStart = $value['dateStart']->format('Y-m-d').' 00:00'; }
+                    
+                    // Aus dem Kalender nur bis Abend anzeigen
+                    $dateStart = $value['dateStart']->format('Y-m-d').' 00:00';
+                    $dateEnd = $value['dateStart']->format('Y-m-d').' 18:00';
+                    $hasTime = 1;
+                    
+                }
                 else {
+                    
                     $hasTime = 1;
                     $dateStart = $value['dateStart']->format('Y-m-d H:i');
                     $dateEnd = $value['dateEnd']->format('Y-m-d H:i');
+                    
                 }
 
                 $entriesManager->EditEvent(-1, $value['title'], $value['subtitle'], $dateStart, $dateEnd, $hasTime, AutoTag::MALTESER_EVENTS); 

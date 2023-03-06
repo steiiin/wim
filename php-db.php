@@ -674,7 +674,7 @@ class EntriesManager {
                         }
 
                         $deadline = $dateObjStart->format($dateFormatStart);
-                        $deadline .= ($dateObjEnd != null ? " - {$dateObjEnd->format($dateFormatEnd)}" : "");
+                        $deadline .= ($dateObjEnd != null && !$dateCalcStartEndSame ? " - {$dateObjEnd->format($dateFormatEnd)}" : "");
 
                     }
                     else if ($requestType == RequestType::INFO) {
@@ -691,7 +691,7 @@ class EntriesManager {
                     else {
 
                         $deadline = $dateObjStart->format($dateFormatStart);
-                        $deadline .= ($dateObjEnd != null ? " - {$dateObjEnd->format($dateFormatEnd)}" : "");
+                        $deadline .= ($dateObjEnd != null && !$dateCalcStartEndSame ? " - {$dateObjEnd->format($dateFormatEnd)}" : "");
                         
                     }
                     
@@ -999,7 +999,8 @@ class EntriesManager {
         $sql = "DELETE FROM `entries`
                 WHERE
                     (DTEND IS NULL AND DTSTART < '$todayStart') OR
-                    (DTEND < '$todayStart')";
+                    (DT_HASTIMEVALUE = 0 AND DTEND < '$todayStart') OR
+                    (DT_HASTIMEVALUE = 2 AND DTEND < '$todayNow')";
         mysqli_query($conn, $sql);
 
         $sql = "DELETE FROM `replacement`

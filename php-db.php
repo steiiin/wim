@@ -660,6 +660,7 @@ class EntriesManager {
                 case TypeTag::EVENT:
 
                     $hasTime = $row->DT_HASTIMEVALUE == "1" ? 1 : 0;
+                    $autoWholeDay = $row->DT_HASTIMEVALUE == "2" ? true : false;
 
                     $dateFormatStart = $hasTime === 1 ? "d.m.y H:i" : "d.m.y";
                     $dateFormatEnd = $dateCalcStartEndSame && $hasTime === 1 ? "H:i" : $dateFormatStart;
@@ -685,13 +686,14 @@ class EntriesManager {
     
                         }
 
-                        $deadline = (($dateObjEnd != null && $hasTime !== 2) ? " - bis {$dateObjEnd->format($dateFormatEnd)}" : ""); 
+                        $deadline = (($dateObjEnd != null && !$autoWholeDay) ? " - bis {$dateObjEnd->format($dateFormatEnd)}" : ""); 
 
                         // kleiner hack: wenn hasTime==2 (nur bei ganztägigen Terminen aus dem Sharepoint), dann schalte diese auf klein, wenn länger als den aktuellen Tag her
-                        if (!$dateCalcStartIsToday && $hasTime === 2) {
+                        if (!$dateCalcStartIsToday && $autoWholeDay) {
 
                             $html .= "<li class=\"inactive\">";
                             $html .= "<div class=\"title\">{$row->TITLE}</div>";
+                            $html .= "<hr>";
                             break;
 
                         }

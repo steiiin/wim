@@ -692,7 +692,7 @@ class EntriesManager {
                         if (!$dateCalcStartIsToday && $autoWholeDay) {
 
                             $html .= "<li class=\"inactive\">";
-                            $html .= "<div class=\"title\">{$row->TITLE}</div>";
+                            $html .= "<div class=\"title\">{$row->TITLE} {$deadline}</div>";
                             $html .= "<hr>";
                             break;
 

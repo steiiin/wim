@@ -686,7 +686,7 @@ class EntriesManager {
     
                         }
 
-                        $deadline = (($dateObjEnd != null && !$autoWholeDay) ? " - bis {$dateObjEnd->format($dateFormatEnd)}" : ""); 
+                        $deadline = (($dateObjEnd != null) ? " - bis {$dateObjEnd->format($dateFormatEnd)}" : ""); 
 
                         // kleiner hack: wenn hasTime==2 (nur bei ganztägigen Terminen aus dem Sharepoint), dann schalte diese auf klein, wenn länger als den aktuellen Tag her
                         if (!$dateCalcStartIsToday && $autoWholeDay) {

@@ -173,6 +173,10 @@ section .group li:last-child {
 	margin-bottom: 0;
 }
 
+section .group li.inactive {
+	font-size: var(--spec-today-inactive-size)
+}
+
 section .group .check {
 	background-image: var(--icon-check);
 	background-position: 0 calc(50% - (var(--spec-today-group-list-padd) / 2));

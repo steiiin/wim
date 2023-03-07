@@ -13,6 +13,7 @@ $uiResolution = array(
             --spec-today-group-padd: 10px;
         
             --spec-today-content-size: 20px;
+            --spec-today-inactive-size: 15px;
         
             --spec-today-group-list-padd: 30px;
 
@@ -35,6 +36,7 @@ $uiResolution = array(
             --spec-today-group-padd: 10px;
         
             --spec-today-content-size: 18px;
+            --spec-today-inactive-size: 14px;
         
             --spec-today-group-list-padd: 25px;
 

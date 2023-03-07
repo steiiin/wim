@@ -685,7 +685,16 @@ class EntriesManager {
     
                         }
 
-                        $deadline = ($dateObjEnd != null ? " - bis {$dateObjEnd->format($dateFormatEnd)}" : "");
+                        $deadline = (($dateObjEnd != null && $hasTime !== 2) ? " - bis {$dateObjEnd->format($dateFormatEnd)}" : ""); 
+
+                        // kleiner hack: wenn hasTime==2 (nur bei ganztägigen Terminen aus dem Sharepoint), dann schalte diese auf klein, wenn länger als den aktuellen Tag her
+                        if (!$dateCalcStartIsToday && $hasTime === 2) {
+
+                            $html .= "<li class=\"inactive\">";
+                            $html .= "<div class=\"title\">{$row->TITLE}</div>";
+                            break;
+
+                        }
 
                     }
                     else {

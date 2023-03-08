@@ -691,7 +691,7 @@ class EntriesManager {
                         // kleiner hack: wenn hasTime==2 (nur bei ganztägigen Terminen aus dem Sharepoint), dann schalte diese auf klein, wenn länger als den aktuellen Tag her
                         if (!$dateCalcStartIsToday && $autoWholeDay) {
 
-                            $html .= "<li class=\"inactive\">";
+                            $html .= "<li>";
                             $html .= "<div class=\"title\">{$row->TITLE} {$deadline}</div>";
                             $html .= "<hr>";
                             break;

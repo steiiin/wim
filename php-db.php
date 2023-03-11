@@ -797,7 +797,10 @@ class EntriesManager {
                         $monthTxt = $dayof;
                         $timeTxt = "(Von $timeStart bis $timeEnd)";
 
-                        if ($monthTxt == -1) {$monthTxt = "Letzten Tag";} else { $monthTxt .= ".";}
+                        if ($monthTxt == -1) {$monthTxt = "Letzten Tag";} 
+                        else if ($monthTxt == -2) {$monthTxt = "Letzten Freitag"; } 
+                        else { $monthTxt .= ".";}
+                        
                         if ($weekday != null && $weekday >= 0) {$html .= "<div class=\"subtext\">&gt; Jede Woche zum $weekdayTxt[$weekday]. $timeTxt</div>";}
                         if ($weekday != null && $weekday < 0) {$html .= "<div class=\"subtext\">&gt; Täglich. $timeTxt</div>";}
                         if ($dayof != null) {$html .= "<div class=\"subtext\">&gt; Jeden Monat zum $monthTxt $timeTxt</div>";}
@@ -1027,7 +1030,6 @@ class EntriesManager {
     function dbSelectForDate($requestType, $userTag, $autotag, $requestDate, $requestTime) {
 
         // Verschiedene Zeiten für die SQL-Anweisung vorbereiten
-        
         $todayStart = (new DateTime($requestDate . " 00:00:00"))->format("Y-m-d H:i:s"); 
         $todayEnd = (new DateTime($requestDate . " 23:59:59"))->format("Y-m-d H:i:s"); 
         $todayNow = $requestDate . " " . $requestTime;
@@ -1038,7 +1040,11 @@ class EntriesManager {
 
         $todayWeekday = (new DateTime($requestDate))->format("w");
         $todayDayofMonth = (new DateTime($requestDate))->format("j");
-        if ($todayDayofMonth == (new DateTime($requestDate))->format("t")) {$todayDayofMonth = "-1";}
+
+        $todayIsLastDayofMonth = 0;
+        $todayIsLastFridayofMonth = 0;
+        if ($todayDayofMonth == (new DateTime($requestDate))->format("t")) {$todayIsLastDayofMonth = 1;}
+        if ($todayDayofMonth == (new DateTime("last fri of this month"))->format("d")) {$todayIsLastFridayofMonth = 1;}
 
         // Filter
         $filterUserTag = (!isset($_SESSION['WimAdmin']) || $_SESSION['WimAdmin']) ? "" : " AND `USERTAG` = '$userTag'";
@@ -1077,7 +1083,9 @@ class EntriesManager {
                                     (
                                         (`TYPETAG` = '" . TypeTag::CYCLEDTASK . "' AND `CYCL_WEEKDAY` = $todayWeekday) OR
                                         (`TYPETAG` = '" . TypeTag::CYCLEDTASK . "' AND `CYCL_WEEKDAY` = -1) OR
-                                        (`TYPETAG` = '" . TypeTag::CYCLEDTASK . "' AND `CYCL_DAYOFMONTH` = $todayDayofMonth)
+                                        (`TYPETAG` = '" . TypeTag::CYCLEDTASK . "' AND `CYCL_DAYOFMONTH` = $todayDayofMonth) OR 
+                                        (`TYPETAG` = '" . TypeTag::CYCLEDTASK . "' AND `CYCL_DAYOFMONTH` = -1 AND 1 = $todayIsLastDayofMonth) OR
+                                        (`TYPETAG` = '" . TypeTag::CYCLEDTASK . "' AND `CYCL_DAYOFMONTH` = -2 AND 1 = $todayIsLastFridayofMonth)
                                     )
                                 )
                             )

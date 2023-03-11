@@ -1412,7 +1412,6 @@ var editors = {
 
     },
 
-
     // MESSAGES
     messageOpen: function(title, subtitle, message, warnMode, btnMode, positiveFunc, negativeFunc, waitOnAction) {
 

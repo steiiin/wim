@@ -504,8 +504,7 @@ var editors = {
         var isValid = true;
 
         if (!editors.hasValueEditor("editor-settings-input-wachename")) { isValid = false; }
-        if (!editors.hasValueEditor("editor-settings-input-autoabfalllink")) { isValid = false; }
-        
+                
         if (editors.getValueEditor("editor-settings-input-wachekfz").match(/^(<option value="[A-Za-z 0-9]*">[A-Za-z 0-9\(\)]*<\/option>[\r\n]?)+$/i) === null) {
             isValid = false; }
 
@@ -525,9 +524,9 @@ var editors = {
 
         editors.setInnerTextEditor("editor-moduleAbfall-meta", "Bearbeitet: " + lastUpdate + ", von @" + lastUser);
 
-        editors.setValueEditor("editor-moduleAbfall-input-autoabfalllink", abfallLink);
+        editors.setValueEditor("editor-moduleAbfall-input-abfalllink", abfallLink);
 
-        editors.editorSettingsValidation();
+        editors.editorModuleAbfallValidation();
         editors.showEditor("moduleAbfall");
 
     },
@@ -535,9 +534,10 @@ var editors = {
 
         var isValid = true;
 
+        if (!editors.hasValueEditor("editor-moduleAbfall-input-abfalllink")) { isValid = false; }
         if (editors.getValueEditor("editor-moduleAbfall-input-abfalllink").match(/^https:\/\/www\.zaoe\.de\/kalender\/ical\/([0-9\/\-_]+)$/) === null) {
             isValid = false; }
-
+        
         editors.setBtnEnabledEditor("editor-moduleAbfall-btn-save", isValid);
         editors.calculateEditorPosition();
 
@@ -551,7 +551,7 @@ var editors = {
         editors.setValueEditor("editor-moduleMaltesercloud-input-user", user);
         editors.setValueEditor("editor-moduleMaltesercloud-input-pass", "abcdefghikl");
 
-        editors.editorSettingsValidation();
+        editors.editorModuleMaltesercloudValidation();
         editors.showEditor("moduleMaltesercloud");
 
     },

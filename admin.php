@@ -212,6 +212,10 @@ if (!($entriesManager->isReady &&
 
                 <hr/>
 
+                <h3>Standardzeiten der Wache</h3>
+                <input id="editor-settings-input-deftiming-time-start" type="time" style="width: auto; display: inline-block;" name="defTimingStart" oninput="editors.editorSettingsValidation();">
+                <input id="editor-settings-input-deftiming-time-end" type="time" style="width: auto; display: inline-block;" name="defTimingEnd" oninput="editors.editorSettingsValidation();">
+
                 <h3>Inhalt für die Fahrzeugauswahl</h3>
                 <textarea id="editor-settings-input-wachekfz" name="wachekfz" placeholder="Fahrzeuge (HTML)" rows="5" type="text"
                     oninput="editors.editorSettingsValidation();" style="margin-bottom: 0;">
@@ -773,7 +777,7 @@ if (!($entriesManager->isReady &&
                 $html .= "      <img src=\"res/ic_add_white.svg\">";
                 $html .= "      <span>Neuer Benutzer</span>";
                 $html .= "    </button>";
-                $html .= "    <button onclick=\"editors.editorSettingsEdit('".($settings->GetMetaLastUpdate())."', '".($settings->GetMetaLastUser())."', '".($settings->GetWacheName())."', '".($settings->GetWacheUiResolution())."', '".($settings->GetWacheKfz())."')\">";
+                $html .= "    <button onclick=\"editors.editorSettingsEdit('".($settings->GetMetaLastUpdate())."', '".($settings->GetMetaLastUser())."', '".($settings->GetWacheName())."', '".($settings->GetWacheUiResolution())."', '".($settings->GetWacheKfz())."', '".($settings->GetWacheDefTiming())."');\">";
                 $html .= "      <img src=\"res/ic_settings_white.svg\">";
                 $html .= "      <span>Einstellungen</span>";
                 $html .= "    </button>";

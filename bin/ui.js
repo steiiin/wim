@@ -487,7 +487,7 @@ var editors = {
     },
 
     // EDITOR: SETTINGS
-    editorSettingsEdit: function (lastUpdate, lastUser, wachename, wacheui, wachekfz) {
+    editorSettingsEdit: function (lastUpdate, lastUser, wachename, wacheui, wachekfz, wacheTiming) {
 
         editors.setInnerTextEditor("editor-settings-meta", "Bearbeitet: " + lastUpdate + ", von @" + lastUser);
 
@@ -505,7 +505,12 @@ var editors = {
 
         if (!editors.hasValueEditor("editor-settings-input-wachename")) { isValid = false; }
                 
-        if (editors.getValueEditor("editor-settings-input-wachekfz").match(/^(<option value="[A-Za-z 0-9]*" start="([0-1]?[0-9]|2[0-3]):[0-5][0-9]" end="([0-1]?[0-9]|2[0-3]):[0-5][0-9]">[A-Za-z 0-9\(\)]*<\/option>[\r\n]?)+$/i) === null) {
+        if (editors.getValueEditor("editor-settings-input-wachekfz").match(/^(<option value="[A-Za-z 0-9]*"( start="([0-1]?[0-9]|2[0-3]):[0-5][0-9]" end="([0-1]?[0-9]|2[0-3]):[0-5][0-9]")?>[A-Za-z 0-9\(\)]*<\/option>[\r\n]?)+$/i) === null) {
+            isValid = false; }
+
+        if (editors.getValueEditor("editor-settings-input-deftiming-time-start").match(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/i) === null) {
+            isValid = false; }
+        if (editors.getValueEditor("editor-settings-input-deftiming-time-end").match(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/i) === null) {
             isValid = false; }
 
         editors.setBtnEnabledEditor("editor-settings-btn-save", isValid);

@@ -1316,7 +1316,7 @@ class Settings {
         }
 
         // Update
-        $sql = "ALTER TABLE settings ADD COLUMN IF NOT EXISTS `WacheKfzDefTiming` text DEFAULT 'defTimingStart%3D%2206%3A00%22+defTimingEnd%3D%2218%3A00%22';"
+        $sql = "ALTER TABLE settings ADD COLUMN IF NOT EXISTS `WacheKfzDefTiming` text DEFAULT 'defTimingStart%3D%2206%3A00%22+defTimingEnd%3D%2218%3A00%22';";
         if (!mysqli_query($conn, $sql)) {
             error_log("Die WIM-Einstellungstabelle konnte nicht aktualisiert werden: " . mysqli_error($conn), 0);
             return false;

@@ -897,7 +897,7 @@ class EntriesManager {
         $timestamp = false;
 
         // SQL vorbereiten
-        $sql = "SELECT `DTSTART`, `TIMETAG`, `AUTOTAG` FROM `entries` WHERE `AUTOTAG` = '".AutoTag::MALTESER_EVENTS."' ORDER BY `DTSTART` DESC LIMIT 1";
+        $sql = "SELECT `DTSTART`, `TIMETAG`, `AUTOTAG`, `TIMETAG` FROM `entries` WHERE `AUTOTAG` = '".AutoTag::MALTESER_EVENTS."' ORDER BY `TIMETAG` DESC LIMIT 1";
         $rtn = mysqli_query($this->connection, $sql);
         if ($rtn !== false) {
 
@@ -910,7 +910,7 @@ class EntriesManager {
                 $dateLastFetchString = ($dateLastFetch)->format("d.m.y H:i");
                 $isOk = true;
 
-                if ($dateTo < new DateTime()) {$isOk = false; } // Neuester Eintrag hinter aktuellem Datum
+                if ($dateLastFetch < (new DateTime('now -7 hours'))) {$isOk = false; } // Neuester Eintrag länger als 3h her
             }
 
         }

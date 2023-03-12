@@ -263,7 +263,6 @@ if (!($entriesManager->isReady &&
             </form>
         </div>
 
-
         <!-- Entry: Info -->
         <div id="editorwindow-info" class="editorWindow">
             <form id="editor-form-info" action="api.php?action=ITEM-EDIT" method="post" name="form">

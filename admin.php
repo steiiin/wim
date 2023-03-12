@@ -792,7 +792,7 @@ if (!($entriesManager->isReady &&
             if ($_SESSION['WimAdmin']) {
 
                 $html .= "<div class=\"group\">";
-                $html .= "  <h2>Module</h2>";
+                $html .= "  <h2 id=\"entries-modules-anchor\" class=\"nopointer\">Module</h2>";
                 $html .= "  <div class=\"tools\">";
                 $html .= "    <button onclick=\"editors.editorModuleAbfallEdit('".($settings->GetMetaLastUpdate())."', '".($settings->GetMetaLastUser())."', '".($settings->GetAutoAbfallLink())."');\">";
                 $html .= "      <img src=\"res/ic_settings_white.svg\">";

@@ -561,6 +561,7 @@ var editors = {
 
         if (editors.getValueEditor("editor-moduleMaltesercloud-input-user").match(/[a-zA-Z]+\.[a-zA-Z]+@malteser\.org/i) === null) {
             isValid = false; }
+        if (!editors.hasValueEditor("editor-moduleMaltesercloud-input-pass")) { isValid = false; }
 
         editors.setBtnEnabledEditor("editor-moduleMaltesercloud-btn-save", isValid);
         editors.calculateEditorPosition();

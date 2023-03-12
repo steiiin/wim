@@ -248,13 +248,13 @@ switch ($paramAction) {
                 $settings->SetAutoAbfallLink($AutoAbfallLink); 
                 include 'cron-auto-abfall.php'; }
 
-            redirectToAdminWithArgs("entries-users-anchor", null);
+            redirectToAdminWithArgs("entries-modules-anchor", null);
 
         }
 
         $_SESSION['messageArgsTitle'] = "Fehler";
         $_SESSION['messageArgsBody'] = "Beim Speichern der Einstellungen ist ein Fehler aufgetreten. > WIM-Verantwortl. kontaktieren.";            
-        redirectToAdminWithArgs("entries-users-anchor", "message=error");
+        redirectToAdminWithArgs("entries-modules-anchor", "message=error");
 
         break;
 
@@ -275,13 +275,13 @@ switch ($paramAction) {
                 $settings->SetAutoMalteserPass($AutoMalteserPass);
                 include 'cron-auto-maltesercloud.php'; }
     
-            redirectToAdminWithArgs("entries-users-anchor", null);
+            redirectToAdminWithArgs("entries-modules-anchor", null);
     
         }
     
         $_SESSION['messageArgsTitle'] = "Fehler";
         $_SESSION['messageArgsBody'] = "Beim Speichern der Einstellungen ist ein Fehler aufgetreten. > WIM-Verantwortl. kontaktieren.";            
-        redirectToAdminWithArgs("entries-users-anchor", "message=error");
+        redirectToAdminWithArgs("entries-modules-anchor", "message=error");
     
         break;
 

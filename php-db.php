@@ -1257,6 +1257,10 @@ class Settings {
         return $this->GetSetting("WacheKfz"); }
     public function SetWacheKfz($value) {
         return $this->SetSetting("WacheKfz", $value); }
+    public function GetWacheDefTiming() {
+        return $this->GetSetting("WacheKfzDefTiming"); }
+    public function SetWacheDefTiming($value) {
+        return $this->SetSetting("WacheKfzDefTiming", $value); }
     
     public function GetAutoAbfallLink() {
         return $this->GetSetting("auto-AbfallLink"); }
@@ -1310,6 +1314,14 @@ class Settings {
             }
 
         }
+
+        // Update
+        $sql = "ALTER TABLE settings ADD COLUMN IF NOT EXISTS `WacheKfzDefTiming` text DEFAULT 'defTimingStart%3D%2206%3A00%22+defTimingEnd%3D%2218%3A00%22';"
+        if (!mysqli_query($conn, $sql)) {
+            error_log("Die WIM-Einstellungstabelle konnte nicht aktualisiert werden: " . mysqli_error($conn), 0);
+            return false;
+        }
+
         $this->connection = $conn;
         return true;
 

@@ -454,7 +454,8 @@ if (!($entriesManager->isReady &&
                 <input id="editor-cycledtask-input-subtitle" name="subtitle" placeholder="Beschreibung"
                     oninput="editors.editorCycledTaskValidation();" type="text">
                 <select id="editor-cycledtask-select-vehicle" style="width:auto;" name="vehicle"
-                    onchange="editors.editorCycledTaskSetVehicleTiming(); editors.editorCycledTaskValidation();">
+                    onchange="editors.editorCycledTaskSetVehicleTiming(); editors.editorCycledTaskValidation();"
+                    <?= urldecode($settings->GetWacheDefTiming()); ?>>
                     <option value=""> Kein Fahrzeug </option>
                     <?= urldecode($settings->GetWacheKfz()); ?>
                 </select>

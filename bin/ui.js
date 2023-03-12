@@ -505,7 +505,7 @@ var editors = {
 
         if (!editors.hasValueEditor("editor-settings-input-wachename")) { isValid = false; }
                 
-        if (editors.getValueEditor("editor-settings-input-wachekfz").match(/^(<option value="[A-Za-z 0-9]*">[A-Za-z 0-9\(\)]*<\/option>[\r\n]?)+$/i) === null) {
+        if (editors.getValueEditor("editor-settings-input-wachekfz").match(/^(<option value="[A-Za-z 0-9]*" start="([0-1]?[0-9]|2[0-3]):[0-5][0-9]" end="([0-1]?[0-9]|2[0-3]):[0-5][0-9]">[A-Za-z 0-9\(\)]*<\/option>[\r\n]?)+$/i) === null) {
             isValid = false; }
 
         editors.setBtnEnabledEditor("editor-settings-btn-save", isValid);
@@ -514,7 +514,7 @@ var editors = {
     },
     editorSettingsResetKfz: function () {
 
-        editors.setValueEditor("editor-settings-input-wachekfz", "<option value=\"RTW 1\"> RTW 1 </option>\n<option value=\"RTW 2\"> RTW 2 </option>\n<option value=\"RTW 3\"> RTW 3 (Ersatz) </option>");
+        editors.setValueEditor("editor-settings-input-wachekfz", "<option value=\"RTW 1\" start=\"06:00\" end=\"18:00\"> RTW 1 </option>\n<option value=\"RTW 2\" start=\"06:00\" end=\"18:00\"> RTW 2 </option>\n<option value=\"RTW 3\"> RTW 3 (Ersatz) </option>");
         editors.editorSettingsValidation();
 
     },
@@ -1019,25 +1019,20 @@ var editors = {
     },
     editorCycledTaskSetVehicleTiming: function() {
 
-        var vehicle = editors.getValueEditor("editor-cycledtask-select-vehicle");
-
-        var start = "05:00";
-        var end = "19:00";
+        var vehicleSelect = document.getElementById("editor-cycledtask-select-vehicle");
+        var vehicleOption = vehicleSelect.selectedOptions[0];
 
         var toolCycledTask = document.getElementById("editor-cycledtask-tool-cyclemode");
         var toolIsDaily = toolCycledTask.getAttribute("tool-mode") == "daily";
 
-        switch (vehicle) {
-            case "RTW 1":
-                start = "05:30";
-                end = "17:30";
-                break;
-
-            case "RTW 2":
-                start = "06:45";
-                end = "19:00"; 
-                break; }
-
+        var start = vehicleSelect.hasAttribute("defTimingStart") ? vehicleSelect.getAttribute("defTimingStart") : "06:00";
+        var end = vehicleSelect.hasAttribute("defTimingEnd") ? vehicleSelect.getAttribute("defTimingEnd") : "18:00";
+        
+        if (vehicleOption.hasAttribute("start")) {
+            start = vehicleOption.hasAttribute("start"); }
+        if (vehicleOption.hasAttribute("end")) {
+            start = vehicleOption.hasAttribute("end"); }
+        
         if (toolIsDaily) { end = "12:00"; }
 
         editors.setValueEditor("editor-cycledtask-datetime-time-start", start);

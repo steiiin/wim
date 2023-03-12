@@ -618,6 +618,7 @@ class EntriesManager {
 
         $html = "";
         $isFirst = true;
+        $cycleGroup = -1;
 
         // Alle Einträge durchlaufen
         while ($row = $rtn->fetch_object()) {
@@ -777,13 +778,33 @@ class EntriesManager {
 
                 case TypeTag::CYCLEDTASK:
 
+                    $weekday = $row->CYCL_WEEKDAY;
+                    $dayof = $row->CYCL_DAYOFMONTH;
+
+                    if ($adminView) {
+
+                        $newCycle = ($dayof == null ? 2 : 4) + ($weekday == null ? 8 : ($weekday == -1 ? 16 : 32 + $weekday));
+                        if ($cycleGroup != $newCycle) {
+
+                            $groupTxt = "";
+                            if ($weekday != null && $weekday < 0) { $groupTxt = "Täglich"; }
+                            else if ($weekday != null && $weekday >= 0) { $groupTxt = "Wöchentlich ({$weekdayTxt[$weekday]})"; }
+                            else { $groupTxt = "Monatlich"; }
+
+                            if (!$isFirst) { $html .= "</ul></li>";}
+                            $html .= "<li><script type=\"text/javascript\">window.addEventListener(\"load\", function() { editors.toggleInit('z-{$newCycle}');} );</script>";
+                            $html .= "<h2 class=\"subgroup\" id=\"z-{$newCycle}\" onclick=\"editors.toggleExpand(this);\" collapsed=\"true\"><span class=\"arrow\">&nbsp;</span>{$groupTxt}</h2>";
+                            $html .= "<ul id=\"z-{$newCycle}-list\">";
+
+                        }
+                        $cycleGroup = $newCycle;
+
+                    }
+
                     $html .= ($adminView ? "<li class=\"editable\">" : "<li class=\"check\">");
                     
                     $timeStart = $dateObjStart !== false ? $dateObjStart->format('H:i') : "00:00";
                     $timeEnd = $dateObjEnd !== false ? $dateObjEnd->format('H:i') : "00:00";
-
-                    $weekday = $row->CYCL_WEEKDAY;
-                    $dayof = $row->CYCL_DAYOFMONTH;
 
                     $html .= ($adminView ? "<button onclick=\"editors.editorCycledTaskEdit($row->ID, &quot;$row->SUBTITLE&quot;, &quot;$row->TASK_VEHICLE&quot;, " . ($weekday==null?"null":$weekday) . ", " . ($dayof==null?"null":$dayof) . ", &quot;$timeStart&quot;, &quot;$timeEnd&quot;);\">&nbsp;</button>" : "");
                             

@@ -204,9 +204,6 @@ switch ($paramAction) {
         $WacheName = filter_input(INPUT_POST, 'wachename', FILTER_SANITIZE_STRING);
         $WacheUI = filter_input(INPUT_POST, 'ui', FILTER_SANITIZE_STRING);
         $WacheKfz = urlencode(filter_input(INPUT_POST, 'wachekfz'));
-        $AutoAbfallLink = filter_input(INPUT_POST, 'auto-abfalllink', FILTER_SANITIZE_STRING);
-        $AutoMalteserUser = filter_input(INPUT_POST, 'auto-malteseruser', FILTER_SANITIZE_STRING);
-        $AutoMalteserPass = filter_input(INPUT_POST, 'auto-malteserpass', FILTER_SANITIZE_STRING);
         
         $settings = new Settings();
         if ($settings->isReady) { 
@@ -219,24 +216,12 @@ switch ($paramAction) {
             //Hinweis auf Neustart, wenn Auflösung geändert
             $beforeWacheUI = $settings->GetWacheUiResolution();
             $settings->SetWacheUiResolution($WacheUI);
-
-            // Abfallkalender aktualisieren, wenn Link geändert.
-            $beforeAutoAbfallLink = $settings->GetAutoAbfallLink();
-            if ($beforeAutoAbfallLink != $AutoAbfallLink) {
-                $settings->SetAutoAbfallLink($AutoAbfallLink); 
-                include 'cron-auto-abfall.php'; }
-            
-            // Zugangsdaten - Passwort nur ändern, wenn gesetzt
-            $settings->SetAutoMalteserUser($AutoMalteserUser);
-            if ($AutoMalteserPass !== "") { 
-                $settings->SetAutoMalteserPass($AutoMalteserPass);
-                include 'cron-auto-maltesercloud.php'; }
-
             if ($beforeWacheUI != $WacheUI) {
                 $setMessage = "message=info";
                 $_SESSION['messageArgsTitle'] = "Neustart erforderlich";
                 $_SESSION['messageArgsBody'] = "Für die Änderung der Auflösung muss die WIM-Box neugestartet werden. <br><br>Aus Sicherheitsgründen funktioniert dies aber nicht von der Admin-Oberfläche aus. <br><br>Am Besten ziehst du kurz den Stecker an der WIM-Box - dann wird die neue Oberfläche geladen. 😁";  
             }
+
             redirectToAdminWithArgs("entries-users-anchor", $setMessage);
 
         }
@@ -245,6 +230,59 @@ switch ($paramAction) {
         $_SESSION['messageArgsBody'] = "Beim Speichern der Einstellungen ist ein Fehler aufgetreten. > WIM-Verantwortl. kontaktieren.";            
         redirectToAdminWithArgs("entries-users-anchor", "message=error");
 
+        break;
+
+    case 'SETTINGS-MODULE-ABFALL':
+
+        ThrowInvalidSession();
+        ThrowNoAdminSession();
+
+        $AutoAbfallLink = filter_input(INPUT_POST, 'auto-abfalllink', FILTER_SANITIZE_STRING);
+
+        $settings = new Settings();
+        if ($settings->isReady) { 
+
+            // Abfallkalender aktualisieren, wenn Link geändert.
+            $beforeAutoAbfallLink = $settings->GetAutoAbfallLink();
+            if ($beforeAutoAbfallLink != $AutoAbfallLink) {
+                $settings->SetAutoAbfallLink($AutoAbfallLink); 
+                include 'cron-auto-abfall.php'; }
+
+            redirectToAdminWithArgs("entries-users-anchor", null);
+
+        }
+
+        $_SESSION['messageArgsTitle'] = "Fehler";
+        $_SESSION['messageArgsBody'] = "Beim Speichern der Einstellungen ist ein Fehler aufgetreten. > WIM-Verantwortl. kontaktieren.";            
+        redirectToAdminWithArgs("entries-users-anchor", "message=error");
+
+        break;
+
+    case 'SETTINGS-MODULE-MALTESER':
+
+        ThrowInvalidSession();
+        ThrowNoAdminSession();
+    
+        $AutoMalteserUser = filter_input(INPUT_POST, 'auto-malteseruser', FILTER_SANITIZE_STRING);
+        $AutoMalteserPass = filter_input(INPUT_POST, 'auto-malteserpass', FILTER_SANITIZE_STRING);
+    
+        $settings = new Settings();
+        if ($settings->isReady) { 
+    
+            // Zugangsdaten - Passwort nur ändern, wenn gesetzt
+            $settings->SetAutoMalteserUser($AutoMalteserUser);
+            if ($AutoMalteserPass !== "") { 
+                $settings->SetAutoMalteserPass($AutoMalteserPass);
+                include 'cron-auto-maltesercloud.php'; }
+    
+            redirectToAdminWithArgs("entries-users-anchor", null);
+    
+        }
+    
+        $_SESSION['messageArgsTitle'] = "Fehler";
+        $_SESSION['messageArgsBody'] = "Beim Speichern der Einstellungen ist ein Fehler aufgetreten. > WIM-Verantwortl. kontaktieren.";            
+        redirectToAdminWithArgs("entries-users-anchor", "message=error");
+    
         break;
 
     case 'GET-UI':

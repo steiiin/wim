@@ -243,6 +243,16 @@ section .group .editable .select.select-active {
     background-image: url(ic_action_selected.svg) !important;
 }
 
+section #entries-cycledtask-list>li {
+	margin-bottom: 1px;
+}
+section .group h2.subgroup {
+    filter: invert(1);
+    border: 2px solid var(--base-background);
+    font-size: var(--spec-events-size-head);
+    padding: 5px;
+}
+
 #editor-templatebusy-searchresult .check {
     background: none;
     padding-left: 0;

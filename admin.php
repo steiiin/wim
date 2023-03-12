@@ -214,28 +214,55 @@ if (!($entriesManager->isReady &&
 
                 <h3>Inhalt für die Fahrzeugauswahl</h3>
                 <textarea id="editor-settings-input-wachekfz" name="wachekfz" placeholder="Fahrzeuge (HTML)" rows="5" type="text"
-                    oninput="editors.editorSettingsValidation();" style="margin-bottom: 0;"><option value="RTW 1"> RTW 1 </option>
-                <option value="RTW 2"> RTW 2 </option>
-            <option value="RTW 3"> RTW 3 (Ersatz) </option></textarea>
+                    oninput="editors.editorSettingsValidation();" style="margin-bottom: 0;">
+                    <option value="RTW 1"> RTW 1 </option>
+                    <option value="RTW 2"> RTW 2 </option>
+                    <option value="RTW 3"> RTW 3 (Ersatz) </option>
+                </textarea>
                 <a href="#" onclick="editors.editorSettingsResetKfz();" style="font-size: 0.7em;color: #000;margin-bottom: 10px;display: block;">Fahrzeugauswahl zurücksetzen</a>
-
-                <hr/>
-
-                <h3>Link zum elektronischen Abfallkalender</h3>
-                <input id="editor-settings-input-autoabfalllink" name="auto-abfalllink" placeholder="Url für Abfallkalender (https://www.zaoe.de)" type="text"
-                    oninput="editors.editorSettingsValidation();">
-
-                <hr/>
-
-                <h3>Zugang zur MalteserCloud (Sharepoint)</h3>
-                <input id="editor-settings-input-automalteseruser" name="auto-malteseruser" placeholder="Benutzername (@malteser.org)" type="text"
-                    oninput="editors.editorSettingsValidation();">
-                <input id="editor-settings-input-automalteserpass" name="auto-malteserpass" placeholder="Neues Passwort" type="password">
 
                 <button id="editor-settings-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;"
                     onclick="editors.setVisibleEditor('messageDisableOverlay', true);">Speichern</button>
             </form>
         </div>
+
+        <!-- Module - Einstellungen -->
+        <div id="editorwindow-moduleAbfall" class="editorWindow">
+            <form id="editor-moduleAbfall-form" action="api.php?action=SETTINGS-MODULE-ABFALL" method="post" name="form">
+                <a class="close" onclick="editors.closeEditor('moduleAbfall');">×</a>
+
+                <h2>Abfallkalender - Einstellungen</h2>
+                <h3 id="editor-moduleAbfall-meta" style="margin: 0 0 15px 0;"></h3>
+
+                <p>Hier kannst du den Link zum Abfallkalender ändern. Unterstützt wird allerdings nur ein Link der ZAOE.</p>
+
+                <h3>Link zum elektronischen Abfallkalender</h3>
+                <input id="editor-moduleAbfall-input-abfalllink" name="auto-abfalllink" placeholder="Url für Abfallkalender (https://www.zaoe.de)" type="text"
+                    oninput="editors.editorModuleAbfallValidation();">
+
+                <button id="editor-moduleAbfall-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;"
+                    onclick="editors.setVisibleEditor('messageDisableOverlay', true);">Speichern</button>
+            </form>
+        </div>
+        <div id="editorwindow-moduleMaltesercloud" class="editorWindow">
+            <form id="editor-moduleMaltesercloud-form" action="api.php?action=SETTINGS-MODULE-MALTESER" method="post" name="form">
+                <a class="close" onclick="editors.closeEditor('moduleMaltesercloud');">×</a>
+
+                <h2>Maltesercloud - Einstellungen</h2>
+                <h3 id="editor-moduleMaltesercloud-meta" style="margin: 0 0 15px 0;"></h3>
+
+                <p>Hier kannst du die Zugangsdaten für das Sharepoint ändern.</p>
+
+                <h3>Zugang zur MalteserCloud (Sharepoint)</h3>
+                <input id="editor-moduleMaltesercloud-input-user" name="auto-malteseruser" placeholder="Benutzername (@malteser.org)" type="text"
+                    oninput="editors.editorModuleMaltesercloudValidation();">
+                <input id="editor-moduleMaltesercloud-input-pass" name="auto-malteserpass" placeholder="Neues Passwort" type="password">
+
+                <button id="editor-moduleMaltesercloud-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;"
+                    onclick="editors.setVisibleEditor('messageDisableOverlay', true);">Speichern</button>
+            </form>
+        </div>
+
 
         <!-- Entry: Info -->
         <div id="editorwindow-info" class="editorWindow">
@@ -746,7 +773,7 @@ if (!($entriesManager->isReady &&
                 $html .= "      <img src=\"res/ic_add_white.svg\">";
                 $html .= "      <span>Neuer Benutzer</span>";
                 $html .= "    </button>";
-                $html .= "    <button onclick=\"editors.editorSettingsEdit('".($settings->GetMetaLastUpdate())."', '".($settings->GetMetaLastUser())."', '".($settings->GetWacheName())."', '".($settings->GetWacheUiResolution())."', '".($settings->GetWacheKfz())."', '".($settings->GetAutoAbfallLink())."', '".($settings->GetAutoMalteserUser())."')\">";
+                $html .= "    <button onclick=\"editors.editorSettingsEdit('".($settings->GetMetaLastUpdate())."', '".($settings->GetMetaLastUser())."', '".($settings->GetWacheName())."', '".($settings->GetWacheUiResolution())."', '".($settings->GetWacheKfz())."')\">";
                 $html .= "      <img src=\"res/ic_settings_white.svg\">";
                 $html .= "      <span>Einstellungen</span>";
                 $html .= "    </button>";
@@ -766,7 +793,17 @@ if (!($entriesManager->isReady &&
             if ($_SESSION['WimAdmin']) {
 
                 $html .= "<div class=\"group\">";
-                $html .= "  <h2>Kalendermodule</h2>";
+                $html .= "  <h2>Module</h2>";
+                $html .= "  <div class=\"tools\">";
+                $html .= "    <button onclick=\"editors.editorModuleAbfallEdit('".($settings->GetMetaLastUpdate())."', '".($settings->GetMetaLastUser())."', '".($settings->GetAutoAbfallLink())."');\">";
+                $html .= "      <img src=\"res/ic_settings_white.svg\">";
+                $html .= "      <span>Abfallkalender</span>";
+                $html .= "    </button>";
+                $html .= "    <button onclick=\"editors.editorModuleMaltesercloudEdit('".($settings->GetMetaLastUpdate())."', '".($settings->GetMetaLastUser())."', '".($settings->GetAutoMalteserUser())."');\">";
+                $html .= "      <img src=\"res/ic_settings_white.svg\">";
+                $html .= "      <span>MalteserCloud</span>";
+                $html .= "    </button>";
+                $html .= "  </div>";
                 $html .= "  <ul>";
                 $html .= $entriesManager->GenerateMetaAutoAbfall(); 
                 $html .= "  </ul>";

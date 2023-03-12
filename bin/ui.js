@@ -495,6 +495,9 @@ var editors = {
         editors.setSelectValue("editor-settings-select-ui", wacheui);
         editors.setValueEditor("editor-settings-input-wachekfz", decodeURIComponent(wachekfz.replaceAll("+", " ")));
 
+        editors.setValueEditor("editor-settings-input-deftiming-time-start", wacheTiming.substring(20,27).replace("%3A", ":"));
+        editors.setValueEditor("editor-settings-input-deftiming-time-end", wacheTiming.substring(49,56).replace("%3A", ":"));
+
         editors.editorSettingsValidation();
         editors.showEditor("settings");
 

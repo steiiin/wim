@@ -1034,9 +1034,9 @@ var editors = {
         var end = vehicleSelect.hasAttribute("defTimingEnd") ? vehicleSelect.getAttribute("defTimingEnd") : "18:00";
         
         if (vehicleOption.hasAttribute("start")) {
-            start = vehicleOption.hasAttribute("start"); }
+            start = vehicleOption.getAttribute("start"); }
         if (vehicleOption.hasAttribute("end")) {
-            start = vehicleOption.hasAttribute("end"); }
+            end = vehicleOption.getAttribute("end"); }
         
         if (toolIsDaily) { end = "12:00"; }
 

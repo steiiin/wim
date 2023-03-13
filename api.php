@@ -205,6 +205,9 @@ switch ($paramAction) {
         $WacheUI = filter_input(INPUT_POST, 'ui', FILTER_SANITIZE_STRING);
         $WacheKfz = urlencode(filter_input(INPUT_POST, 'wachekfz'));
         
+        $defStart = filter_input(INPUT_POST, 'defTimingStart', FILTER_SANITIZE_STRING);
+        $defEnd = filter_input(INPUT_POST, 'defTimingEnd', FILTER_SANITIZE_STRING);
+        
         $settings = new Settings();
         if ($settings->isReady) { 
 
@@ -212,6 +215,8 @@ switch ($paramAction) {
 
             $settings->SetWacheName($WacheName);
             $settings->SetWacheKfz($WacheKfz);
+
+            $settings->SetWacheDefTiming(urlencode("deftimingstart=\"{$defStart}\" deftimingend=\"{$defEnd}\""));
 
             //Hinweis auf Neustart, wenn Auflösung geändert
             $beforeWacheUI = $settings->GetWacheUiResolution();

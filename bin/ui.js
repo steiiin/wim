@@ -508,7 +508,7 @@ var editors = {
 
         if (!editors.hasValueEditor("editor-settings-input-wachename")) { isValid = false; }
                 
-        if (editors.getValueEditor("editor-settings-input-wachekfz").match(/^(<option value="[A-Za-z 0-9]*"( start="([0-1]?[0-9]|2[0-3]):[0-5][0-9]" end="([0-1]?[0-9]|2[0-3]):[0-5][0-9]")?>[A-Za-z 0-9\(\)]*<\/option>[\r\n]?)+$/i) === null) {
+        if (editors.getValueEditor("editor-settings-input-wachekfz").match(/^(<(\n)*option[ \n]+value="[A-Za-z 0-9]*"([ \n]+start="([0-1]?[0-9]|2[0-3]):[0-5][0-9]"[ \n]+end="([0-1]?[0-9]|2[0-3]):[0-5][0-9]")?[ \n]+>[A-Za-z 0-9\(\)]*<\/[ \n]*option[ \n]*>[\r\n]?)+$/i) === null) {
             isValid = false; }
 
         if (editors.getValueEditor("editor-settings-input-deftiming-time-start").match(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/i) === null) {
@@ -522,7 +522,10 @@ var editors = {
     },
     editorSettingsResetKfz: function () {
 
-        editors.setValueEditor("editor-settings-input-wachekfz", "<option value=\"RTW 1\" start=\"06:00\" end=\"18:00\"> RTW 1 </option>\n<option value=\"RTW 2\" start=\"06:00\" end=\"18:00\"> RTW 2 </option>\n<option value=\"RTW 3\"> RTW 3 (Ersatz) </option>");
+        editors.setValueEditor("editor-settings-input-wachekfz", 
+            "<option\n   value=\"RTW 1\"\n   start=\"05:30\"\n   end=\"17:30\"\n   > RTW 1 </option>\n" + 
+            "<option\n   value=\"RTW 2\"\n   start=\"06:45\"\n   end=\"19:00\"\n   > RTW 2 </option>\n" + 
+            "<option\n   value=\"RTW 3\"\n   > RTW 3 (Reserve) </option>");
         editors.editorSettingsValidation();
 
     },
@@ -1033,8 +1036,8 @@ var editors = {
         var toolCycledTask = document.getElementById("editor-cycledtask-tool-cyclemode");
         var toolIsDaily = toolCycledTask.getAttribute("tool-mode") == "daily";
 
-        var start = vehicleSelect.hasAttribute("defTimingStart") ? vehicleSelect.getAttribute("defTimingStart") : "06:00";
-        var end = vehicleSelect.hasAttribute("defTimingEnd") ? vehicleSelect.getAttribute("defTimingEnd") : "18:00";
+        var start = vehicleSelect.hasAttribute("deftimingstart") ? vehicleSelect.getAttribute("deftimingstart") : "06:00";
+        var end = vehicleSelect.hasAttribute("deftimingend") ? vehicleSelect.getAttribute("deftimingend") : "18:00";
         
         if (vehicleOption.hasAttribute("start")) {
             start = vehicleOption.getAttribute("start"); }

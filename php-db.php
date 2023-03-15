@@ -688,6 +688,11 @@ class EntriesManager {
                         }
 
                         $deadline = (($dateObjEnd != null) ? " - bis {$dateObjEnd->format($dateFormatEnd)}" : ""); 
+                        
+                        // Deadline ausblenden, wenn start&ende an einem Tag und ohne Zeiten
+                        if ($dateCalcStartEndSame && ($autoWholeDay || $hasTime === 0)) {
+                            $deadline = "";
+                        }
 
                         // kleiner hack: wenn hasTime==2 (nur bei ganztägigen Terminen aus dem Sharepoint), dann schalte diese auf klein, wenn länger als den aktuellen Tag her
                         if (!$dateCalcStartIsToday && $autoWholeDay) {

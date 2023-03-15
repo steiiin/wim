@@ -690,7 +690,7 @@ class EntriesManager {
                         $deadline = (($dateObjEnd != null) ? " - bis {$dateObjEnd->format($dateFormatEnd)}" : ""); 
                         
                         // Deadline ausblenden, wenn start&ende an einem Tag und ohne Zeiten
-                        if ($dateCalcStartEndSame && ($autoWholeDay || $hasTime === 0)) {
+                        if ($dateCalcEndIsToday && ($autoWholeDay || $hasTime === 0)) {
                             $deadline = "";
                         }
 

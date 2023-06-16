@@ -12,9 +12,6 @@
     require_once dirname(__FILE__) . '/db-settings.php';
     require_once dirname(__FILE__) . '/ui-resolution.php';
     
-    // migration ##################################################################################
-    Migration::MigrateDB();
-
     // document ###################################################################################
     $users = new Users();
     $entries = new Entries();

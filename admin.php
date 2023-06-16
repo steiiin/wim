@@ -732,6 +732,43 @@
     <!-- LAYOUT -->
     <section style="max-width:900px;margin:0 auto;">
 
+        <!-- Dependencies -->
+        <?php
+
+            $extensionsAvailable = true;
+            $hasCurl = extension_loaded('curl');
+            $hasIntl = extension_loaded('intl');
+            $hasXml = extension_loaded('xml');
+            
+            $unfulfilled = "";
+            if (!$hasCurl)
+            {
+                $unfulfilled .= "<p>- php-curl fehlt.</p>";
+                $extensionsAvailable = false;
+            }
+            if (!$hasIntl)
+            {
+                $unfulfilled .= "<p>- php-intl fehlt.</p>";
+                $extensionsAvailable = false;
+            }
+            if (!$hasXml)
+            {
+                $unfulfilled .= "<p>- php-xml fehlt.</p>";
+                $extensionsAvailable = false;
+            }
+            if (!$extensionsAvailable)
+            {
+                $html = "<div id='nodata'>";
+                $html .= "<h2>Fehlerhafte Installation</h2>";
+                $html .= "<p>Leider fehlt mindestens eine Erweiterung:</p>";
+                $html .= $unfulfilled;
+                $html .= "<p>Bitte installiere die nötigen Erweiterungen und versuche es erneut.</p>";
+                $html .= "</div>";
+                die($html); 
+            }
+
+        ?>
+
         <!-- Entries -->
         <?php
 

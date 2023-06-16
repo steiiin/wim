@@ -355,14 +355,16 @@ var WIM = (function () {
             }
         },
         getDateFraction: function (dateObj, withWeekday, withFullYear) {
-            try {
+            try 
+            {
+
                 // create datestring
                 let options = { day: '2-digit', month: '2-digit', year: (withFullYear ? 'numeric' : '2-digit') };
-                let formattedDate = dateObj.toLocaleDateString(undefined, options);
+                let formattedDate = dateObj.toLocaleDateString('de-DE', options);
 
                 // prefix weekday, if withWeekday
                 if (withWeekday) {
-                    let weekday = dateObj.toLocaleDateString(undefined, { weekday: 'short' });
+                    let weekday = dateObj.toLocaleDateString('de-DE', { weekday: 'short' });
                     formattedDate = weekday + ', ' + formattedDate;
                 }
 

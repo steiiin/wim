@@ -1048,7 +1048,7 @@ class UserInterface
                     if ($payload->description) { $html .= "<div class='subtext description'>$payload->description</div>"; }
 
                     // time-info ----------------------------------------------------------------------------
-                    $timeInfo = self::GetFrienlyRecurringDescription($entry->CYCL_TYPE, $entry->CYCL_WEEKDAY, $entry->CYCL_DOM);
+                    $timeInfo = $adminView ? self::GetFrienlyRecurringDescription($entry->CYCL_TYPE, $entry->CYCL_WEEKDAY, $entry->CYCL_DOM) : '';
                     $timeInfo .= $adminView ? " ({$dtStart->format('H:i')}-{$dtEnd->format('H:i')})" : "";
                     $html .= $timeInfo ? "<div class='timeinfo'>$timeInfo</div>" : '';
                     if ($isHidden) { $html .= "<div class='timeinfo'>(Heute Ausgeblendet)</div>"; }

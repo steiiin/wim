@@ -448,7 +448,7 @@ var WIM = (function () {
         downloadWimCrt: function () {
             let link = document.createElement('a')
             link.href = '/cert'
-            link.download = 'wim-zertifikat'
+            link.download = 'wim-zertifikat.crt'
             link.style.display = 'none'
             document.body.appendChild(link)
             link.click()

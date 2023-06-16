@@ -1,21 +1,29 @@
-<?php
+<?php 
 
-// Session prüfen
-require_once 'php-auth.php';
-if (!checkAdminSession()) {redirectToLogin();}
-require_once 'php-db.php';
+    namespace WIM;
 
-// Klassen instanzieren
-$settings = new Settings();
-$usersManager = new UsersManager();
-$entriesManager = new EntriesManager();
-            
-if (!($entriesManager->isReady &&
-      $usersManager->isReady &&
-      $settings->isReady)) { die('Fehler beim Datenabruf. Kontaktiere den WIM-Verantwortlichen.'); }
+    // check Session
+    require_once dirname(__FILE__) . '/db-auth.php';
+    Auth::blockInvalidSession();
 
+    // files ######################################################################################
+    require_once dirname(__FILE__) . '/db-entries.php';
+    require_once dirname(__FILE__) . '/db-users.php';
+    require_once dirname(__FILE__) . '/db-settings.php';
+    require_once dirname(__FILE__) . '/ui-resolution.php';
+    
+    // migration ##################################################################################
+    Migration::MigrateDB();
+
+    // document ###################################################################################
+    $users = new Users();
+    $entries = new Entries();
+    $settings = new Settings();
+
+    $moduleAbfall = new ModuleAbfall($users, $entries, $settings);
+    $moduleMalteser = new ModuleMalteser($users, $entries, $settings);
+    
 ?>
-
 <!doctype html>
 <html lang="de">
 
@@ -49,23 +57,31 @@ if (!($entriesManager->isReady &&
 
     <script type="text/javascript">
 
-        function startUp() {
+        function init() {
 
-            editors.toggleInit("entries-<?=TypeTag::INFO?>-anchor");
-            editors.toggleInit("entries-<?=TypeTag::EVENT?>-anchor");
-            editors.toggleInit("entries-<?=TypeTag::UNIQUETASK?>-anchor");
-            editors.toggleInit("entries-<?=TypeTag::CYCLEDTASK?>-anchor");
+            WIM.EDITOR.adminGroups.expandInit('entries-info-anchor')
+            WIM.EDITOR.adminGroups.expandInit('entries-task-anchor')
+            WIM.EDITOR.adminGroups.expandInit('entries-event-anchor')
+            WIM.EDITOR.adminGroups.expandInit('entries-recurring-anchor')
+
+            WIM.EDITOR.adminGroups.expandInit('entries-users-anchor')
+            WIM.EDITOR.adminGroups.expandInit('entries-modules-anchor')
+
+            <?php 
+                $encodedTiming = $settings->GetVehicleTiming();
+                echo "WIM.EDITOR.init($encodedTiming)";
+            ?>
 
         }
 
         function eventResize() {
 
-            editors.calculateEditorPosition();
-            editors.calculateMessagePosition();
+            WIM.EDITOR.calculateEditorPosition();
+            WIM.EDITOR.calculateMessagePosition();
 
         }
 
-        window.onload = startUp;
+        window.onload = init;
         window.onresize = eventResize;
 
     </script>
@@ -75,9 +91,9 @@ if (!($entriesManager->isReady &&
 
     <!-- HEADER -->
     <div id="header">
-        <h1>WIM|editor [<span>@<?=$_SESSION['LoginUser'].($_SESSION['WimAdmin']?($_SESSION['LoginUser'] === "admin" ? "" : "/Admin"):"");?></span>]</h1>
+        <h1>WIM|editor [<span>@<?=$_SESSION['User'].($_SESSION['IsAdmin']?($_SESSION['User'] === 'admin' ? '' : '/Admin'):'');?></span>]</h1>
         <div class="header-info-area admin-header-info-area">
-            <a onclick="editors.editorAccountCreate();" class="account">
+            <a onclick="WIM.EDITOR.accountEditor.create()" class="account">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M3 5v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2H5c-1.11 0-2 .9-2 2zm12 4c0 1.66-1.34 3-3 3s-3-1.34-3-3 1.34-3 3-3 3 1.34 3 3zm-9 8c0-2 4-3.1 6-3.1s6 1.1 6 3.1v1H6v-1z"/></svg>
             </a>
         </div>
@@ -89,31 +105,31 @@ if (!($entriesManager->isReady &&
         <!-- Account -->
         <div id="editorwindow-account" class="editorWindow">
             <form id="editor-account-form" action="api.php" method="post" name="form">
-                <a class="close" onclick="editors.closeEditor('account');">×</a>
+                <a class="close" onclick="WIM.EDITOR.closeEditor('account');">×</a>
 
                 <input id="editor-id-account" name="id" type="hidden" value="-1">
 
                 <h2>Mein Profil</h2>
-                <h3 style="margin: 0 0 15px 0;">@<?=$_SESSION['LoginUser']?></h3>
+                <h3 style="margin: 0 0 15px 0;">@<?=$_SESSION['User']?></h3>
 
-                <p <?=($_SESSION['AllowChanges'] ? "" : "style='display:none;'")?>>Hier kannst du deine Daten ändern.</p>
+                <p <?=($_SESSION['AllowChanges'] ? '' : "style='display:none;'")?>>Hier kannst du deine Daten ändern.</p>
 
                 <div id="editor-account-actiontool" class="tools tools-full" tool-action="" style="margin-bottom: 10px; <?=($_SESSION['AllowChanges'] ? "" : "display:none;")?>" >
 
                     <button id="editor-account-action-user" type="button"
-                        onclick="editors.setEditorToolArgs('editor-account-actiontool', 'tool-action', 'user'); editors.editorAccountValidation();">
-                        <img src="res/ic_account_black.svg" style="width:20px;">
+                        onclick="WIM.EDITOR.accountEditor.changeState('user'); WIM.EDITOR.accountEditor.validate()">
+                        <img src="res/ic_account.svg" style="width:20px;">
                         <span>Nutzerkennung ändern</span>
                     </button>
 
                     <button id="editor-account-action-password" type="button"
-                        onclick="editors.setEditorToolArgs('editor-account-actiontool', 'tool-action', 'pass'); editors.editorAccountValidation();">
+                        onclick="WIM.EDITOR.accountEditor.changeState('pass'); WIM.EDITOR.accountEditor.validate()">
                         <img src="res/ic_btn_password.svg" style="width:20px">
                         <span>Passwort ändern</span>
                     </button>
 
                     <button id="editor-account-action-cancelcurrent" type="button"
-                        onclick="editors.setEditorToolArgs('editor-account-actiontool', 'tool-action', ''); editors.editorAccountValidation();">
+                        onclick="WIM.EDITOR.accountEditor.changeState(''); WIM.EDITOR.accountEditor.validate()">
                         <img src="res/ic_btn_back.svg" style="width:20px">
                         <span>Zurück zum Menü</span>
                     </button>
@@ -123,20 +139,20 @@ if (!($entriesManager->isReady &&
                 <div id="editor-account-actioncontainer-user">
 
                     <input id="editor-account-input-user" name="user" placeholder="Neue Nutzerkennung" type="text"
-                        oninput="editors.editorAccountValidation();">
+                        oninput="WIM.EDITOR.accountEditor.validate()">
                     <h3 id="editor-account-input-user-error" class="error"></h3>
 
                 </div>
                 <div id="editor-account-actioncontainer-password">
 
                     <input id="editor-account-input-oldpass" name="oldpass" placeholder="Altes Kennwort" type="password"
-                        oninput="editors.editorAccountValidation();">
+                        oninput="WIM.EDITOR.accountEditor.validate()">
 
                     <input id="editor-account-input-pass1" name="newpass" placeholder="Neues Kennwort" type="password"
-                        oninput="editors.editorAccountValidation();">
+                        oninput="WIM.EDITOR.accountEditor.validate()">
 
                     <input id="editor-account-input-pass2" placeholder="Neues Kennwort wiederholen" type="password"
-                        oninput="editors.editorAccountValidation();">
+                        oninput="WIM.EDITOR.accountEditor.validate()">
 
                     <h3 id="editor-account-input-oldpass-error" class="error">Gib bitte das bisherige Passwort ein</h3>
                     <h3 id="editor-account-input-newpass-error" class="error">Die neuen Passwörter stimmen nicht überein</h3>
@@ -145,9 +161,8 @@ if (!($entriesManager->isReady &&
 
                 <div class="tools tools-full">
                     <a id="editor-account-action-certificate" class="link-button"
-                        href="bin/wim.crt"
-                        onclick="editors.editorAccountInvokeCertificateDownload();">
-                        <img src="res/ic_action_download.svg" style="width:20px;">
+                        onclick="WIM.EDITOR.accountEditor.invokeCrtDownload()">
+                        <img src="res/ic_btn_download.svg" style="width:20px;">
                         <span>HTTPS-Zertifikat herunterladen</span>
                     </a>
                 </div>
@@ -155,14 +170,14 @@ if (!($entriesManager->isReady &&
                 <button id="editor-account-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;"
                     >Speichern</button>
                 <button id="editor-account-action-logout" class="btn btn-input" type="button" style="background-color:#a00 !important; margin-top:5px;"
-                    onclick="editors.editorAccountInvokeLogout();">Abmelden</button>
+                    onclick="WIM.EDITOR.accountEditor.invokeLogout()">Abmelden</button>
             </form>
         </div>
 
         <!-- Benutzer -->
         <div id="editorwindow-user" class="editorWindow">
             <form id="editor-user-form" action="api.php?action=USER-EDIT" method="post" name="form">
-                <a class="close" onclick="editors.closeEditor('user');">×</a>
+                <a class="close" onclick="WIM.EDITOR.closeEditor('user');">×</a>
 
                 <input id="editor-id-user" name="id" type="hidden" value="-1">
 
@@ -170,9 +185,7 @@ if (!($entriesManager->isReady &&
                 <p>Nutzer können sich im WIM anmelden und Änderungen vornehmen.</p>
 
                 <input id="editor-user-input-loginuser" name="loginuser" placeholder="Nutzerkennung" type="text" 
-                    oninput="editors.editorUserValidation();">
-                <input id="editor-user-input-fullname" name="fullname" placeholder="Voller Name (Wird im WIM angezeigt)" type="text"
-                    oninput="editors.editorUserValidation();">
+                    oninput="WIM.EDITOR.userEditor.validate()">
 
                 <hr/>
         
@@ -181,59 +194,116 @@ if (!($entriesManager->isReady &&
 
                 <button id="editor-user-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;">Hinzufügen</button>
                 <button id="editor-user-action-passreset" class="btn btn-input" type="button" style="background-color:#a00 !important; margin-top:5px;"
-                        onclick="editors.editorUserInvokePassReset();">Passwort zurücksetzen</button>
+                        onclick="WIM.EDITOR.userEditor.invokePasswordReset()">Passwort zurücksetzen</button>
                 <button id="editor-user-action-deleteuser" class="btn btn-input" type="button" style="background-color:#a00 !important; margin-top:5px;"
-                        onclick="editors.editorUserInvokeDelete();">Nutzer entfernen</button>
+                        onclick="WIM.EDITOR.userEditor.invokeDelete()">Nutzer entfernen</button>
             </form>
         </div>
 
         <!-- Einstellungen -->
         <div id="editorwindow-settings" class="editorWindow">
             <form id="editor-settings-form" action="api.php?action=SETTINGS" method="post" name="form">
-                <a class="close" onclick="editors.closeEditor('settings');">×</a>
+                <a class="close" onclick="WIM.EDITOR.closeEditor('settings');">×</a>
 
                 <h2>WIM-Einstellungen</h2>
                 <h3 id="editor-settings-meta" style="margin: 0 0 15px 0;"></h3>
 
                 <p>Hier kannst du die Einstellungen dieses WIM festlegen.</p>
 
-                <h3>Titel auf dem WIM-Bildschirm (z.B. Rettungswache Coswig)</h3>
-                <input id="editor-settings-input-wachename" name="wachename" placeholder="Anzeigetitel" type="text" 
-                    oninput="editors.editorSettingsValidation();">
-                
-                <h3>Auflösung des Anzeige-Bildschirms</h3>
-                <select id="editor-settings-select-ui" style="width:auto;" name="ui"
-                    onchange="editors.editorSettingsValidation();">
-                    <?php
-                        require_once 'ui-resolution.php';
-                        echo GetStyleOptions();
-                    ?>
-                </select>
+                <div id="editor-settings-actiontool" class="tools tools-full" tool-action="" style="margin-bottom: 10px;" >
 
-                <hr/>
+                    <button id="editor-settings-action-ui" type="button"
+                        onclick="WIM.EDITOR.settingsEditor.changeState('ui'); WIM.EDITOR.settingsEditor.validate()">
+                        <img src="res/ic_btn_edit.svg" style="width:20px;">
+                        <span>Bildschirm einrichten</span>
+                    </button>
 
-                <h3>Standardzeiten der Wache</h3>
-                <input id="editor-settings-input-deftiming-time-start" type="time" style="width: auto; display: inline-block;" name="defTimingStart" oninput="editors.editorSettingsValidation();">
-                <input id="editor-settings-input-deftiming-time-end" type="time" style="width: auto; display: inline-block;" name="defTimingEnd" oninput="editors.editorSettingsValidation();">
+                    <button id="editor-settings-action-vehicles" type="button"
+                        onclick="WIM.EDITOR.settingsEditor.changeState('vehicles'); WIM.EDITOR.settingsEditor.validate()">
+                        <img src="res/ic_btn_vehicles.svg" style="width:20px">
+                        <span>Zeiten &amp; Fahrzeuge ändern</span>
+                    </button>
 
-                <h3>Inhalt für die Fahrzeugauswahl</h3>
-                <textarea id="editor-settings-input-wachekfz" name="wachekfz" placeholder="Fahrzeuge (HTML)" rows="5" type="text"
-                    oninput="editors.editorSettingsValidation();" style="margin-bottom: 0;">
-                    <option value="RTW 1"> RTW 1 </option>
-                    <option value="RTW 2"> RTW 2 </option>
-                    <option value="RTW 3"> RTW 3 (Ersatz) </option>
-                </textarea>
-                <a href="#" onclick="editors.editorSettingsResetKfz();" style="font-size: 0.7em;color: #000;margin-bottom: 10px;display: block;">Fahrzeugauswahl zurücksetzen</a>
+                    <button id="editor-settings-action-importexport" type="button"
+                        onclick="WIM.EDITOR.settingsEditor.changeState('importexport'); WIM.EDITOR.settingsEditor.validate()">
+                        <img src="res/ic_btn_importexport.svg" style="width:20px">
+                        <span>Importieren/Exportieren</span>
+                    </button>
+
+                    <button id="editor-settings-action-cancelcurrent" type="button"
+                        onclick="WIM.EDITOR.settingsEditor.changeState(''); WIM.EDITOR.settingsEditor.validate()">
+                        <img src="res/ic_btn_back.svg" style="width:20px">
+                        <span>Zurück zum Menü</span>
+                    </button>
+
+                </div>
+
+                <div id="editor-settings-actioncontainer-ui">
+
+                    <h3>Titel auf dem WIM-Bildschirm (z.B. Rettungswache Dresden)</h3>
+                    <input id="editor-settings-input-wachename" name="wachename" placeholder="Wachenname" type="text" 
+                        oninput="WIM.EDITOR.settingsEditor.validate()">
+
+                    <h3>Auflösung des Anzeige-Bildschirms</h3>
+                    <select id="editor-settings-select-resolution" style="width:auto;" name="ui-res"
+                        onchange="WIM.EDITOR.settingsEditor.validate()">
+                        <?php
+                            $html = '';
+                            $resolutions = UiResolution::GetAvailable();
+                            foreach($resolutions as $key)
+                            {
+                                $html .= "<option value='$key'>$key</option>";
+                            }
+                            echo $html;
+                        ?>
+                    </select>
+
+                    <hr/>
+
+                    <h3>Wachenkoordinaten (für Nachtmodus)</h3>
+                    <input id="editor-settings-input-wachelocation" name="wacheloc" type="hidden">
+                    <input id="editor-settings-input-lat" placeholder="Breitengrad (z.B. 51.123456)" type="text" 
+                        oninput="WIM.EDITOR.settingsEditor.validate()">
+                    <input id="editor-settings-input-long" placeholder="Längengrad (z.B. 12.123456)" type="text" 
+                        oninput="WIM.EDITOR.settingsEditor.validate()">
+                    <a class="link" href="https://www.latlong.net/" target="_blank">Koordinaten finden</a>
+
+                </div>
+
+                <div id="editor-settings-actioncontainer-vehicles">
+
+                    <input id="editor-settings-input-vehicletiming" name="vehicleTiming" type="hidden">
+
+                    <h3>Standardzeiten der Wache</h3>
+                    <input id="editor-settings-input-deftiming-time-start" type="time" style="width: auto; display: inline-block;" oninput="WIM.EDITOR.settingsEditor.validate()">
+                    <input id="editor-settings-input-deftiming-time-end" type="time" style="width: auto; display: inline-block;" oninput="WIM.EDITOR.settingsEditor.validate()">
+
+                    <h3>Inhalt für die Fahrzeugauswahl</h3>
+                    <textarea id="editor-settings-input-wachekfz" placeholder="Fahrzeuge (HTML)" rows="15" type="text"
+                        oninput="WIM.EDITOR.settingsEditor.validate()">
+                    </textarea>
+                    <a class="link" href="#" onclick="WIM.EDITOR.settingsEditor.invokeResetVehicles()">Zeiten &amp; Fahrzeuge zurücksetzen</a>
+                    
+                </div>
 
                 <button id="editor-settings-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;"
-                    onclick="editors.setVisibleEditor('messageDisableOverlay', true);">Speichern</button>
+                    onclick="WIM.EDITOR.disableUI(true);">Speichern</button>
             </form>
+            <div id="editor-settings-actioncontainer-importexport" style="margin-top:-10px">
+                    <button id="editor-settings-btn-export" class="btn btn-input" type="button" style="margin-top:10px;"
+                        onclick="WIM.EDITOR.settingsEditor.invokeExport();">Exportiere Einträge &amp; Einstellungen</button>
+                        <form id="editor-settings-import-form" action="api.php?action=WIM-IMPORT" method="post" enctype="multipart/form-data">
+                            <label for="editor-settings-btn-import" class="btn btn-input" style="margin-top:10px;text-align:center">
+                                <input id="editor-settings-btn-import" name="file" type="file" style="display:none"
+                                    onchange="WIM.EDITOR.settingsEditor.invokeImport();">Importiere Einträge &amp; Einstellungen</label>
+                        </form>
+                </div>
         </div>
 
         <!-- Module - Einstellungen -->
         <div id="editorwindow-moduleAbfall" class="editorWindow">
-            <form id="editor-moduleAbfall-form" action="api.php?action=SETTINGS-MODULE-ABFALL" method="post" name="form">
-                <a class="close" onclick="editors.closeEditor('moduleAbfall');">×</a>
+            <form id="editor-moduleAbfall-form" action="api.php?action=SETTINGS-MODULE&m=ABFALL" method="post" name="form">
+                <a class="close" onclick="WIM.EDITOR.closeEditor('moduleAbfall');">×</a>
 
                 <h2>Abfallkalender - Einstellungen</h2>
                 <h3 id="editor-moduleAbfall-meta" style="margin: 0 0 15px 0;"></h3>
@@ -242,35 +312,68 @@ if (!($entriesManager->isReady &&
 
                 <h3>Link zum elektronischen Abfallkalender</h3>
                 <input id="editor-moduleAbfall-input-abfalllink" name="auto-abfalllink" placeholder="Url für Abfallkalender (https://www.zaoe.de)" type="text"
-                    oninput="editors.editorModuleAbfallValidation();">
+                    oninput="WIM.EDITOR.moduleAbfallEditor.validate()">
 
                 <button id="editor-moduleAbfall-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;"
-                    onclick="editors.setVisibleEditor('messageDisableOverlay', true);">Speichern</button>
+                    onclick="WIM.EDITOR.disableUI(true)">Speichern</button>
             </form>
         </div>
         <div id="editorwindow-moduleMaltesercloud" class="editorWindow">
             <form id="editor-moduleMaltesercloud-form" action="api.php?action=SETTINGS-MODULE-MALTESER" method="post" name="form">
-                <a class="close" onclick="editors.closeEditor('moduleMaltesercloud');">×</a>
+                <a class="close" onclick="WIM.EDITOR.closeEditor('moduleMaltesercloud');">×</a>
 
                 <h2>Maltesercloud - Einstellungen</h2>
                 <h3 id="editor-moduleMaltesercloud-meta" style="margin: 0 0 15px 0;"></h3>
 
-                <p>Hier kannst du die Zugangsdaten für das Sharepoint ändern.</p>
+                <p>Hier kannst du die Daten für das Sharepoint ändern.</p>
 
-                <h3>Zugang zur MalteserCloud (Sharepoint)</h3>
-                <input id="editor-moduleMaltesercloud-input-user" name="auto-malteseruser" placeholder="Benutzername (@malteser.org)" type="text"
-                    oninput="editors.editorModuleMaltesercloudValidation();">
-                <input id="editor-moduleMaltesercloud-input-pass" name="auto-malteserpass" placeholder="Neues Passwort" type="password">
+                <div id="editor-moduleMaltesercloud-actiontool" class="tools tools-full" tool-action="" style="margin-bottom: 10px;" >
+
+                    <button id="editor-moduleMaltesercloud-action-endpoint" type="button"
+                        onclick="WIM.EDITOR.moduleMalteserEditor.changeState('endpoint'); WIM.EDITOR.moduleMalteserEditor.validate()">
+                        <img src="res/ic_btn_onlystart.svg" style="width:20px;">
+                        <span>Terminkalender ändern</span>
+                    </button>
+
+                    <button id="editor-moduleMaltesercloud-action-credentials" type="button"
+                        onclick="WIM.EDITOR.moduleMalteserEditor.changeState('credentials'); WIM.EDITOR.moduleMalteserEditor.validate()">
+                        <img src="res/ic_btn_password.svg" style="width:20px">
+                        <span>Zugangsdaten ändern</span>
+                    </button>
+
+                    <button id="editor-moduleMaltesercloud-action-cancelcurrent" type="button"
+                        onclick="WIM.EDITOR.moduleMalteserEditor.changeState(''); WIM.EDITOR.moduleMalteserEditor.validate()">
+                        <img src="res/ic_btn_back.svg" style="width:20px">
+                        <span>Zurück zum Menü</span>
+                    </button>
+
+                </div>
+
+                <div id="editor-moduleMaltesercloud-actioncontainer-endpoint">
+
+                    <input id="editor-moduleMaltesercloud-input-endpoint" name="auto-malteser-endpoint" placeholder="https://maltesercloud.sharepoint.com/sites/[...]/_api/lists(guid'[...]')" type="text"
+                        oninput="WIM.EDITOR.moduleMalteserEditor.validate()">
+
+                </div>
+                <div id="editor-moduleMaltesercloud-actioncontainer-credentials">
+
+                    <input id="editor-moduleMaltesercloud-input-user" name="auto-malteser-user" placeholder="Benutzername (vorname.nachname@malteser.org)" type="text"
+                        oninput="WIM.EDITOR.moduleMalteserEditor.validate()">
+                    <input id="editor-moduleMaltesercloud-input-pass" name="auto-malteser-pass" placeholder="Neues Passwort" type="password"
+                        oninput="WIM.EDITOR.moduleMalteserEditor.validate()">
+                        <h3 id="editor-moduleMaltesercloud-input-cred-error" class="error">Der Benutzername ist im falschen Format.</h3>
+
+                </div>
 
                 <button id="editor-moduleMaltesercloud-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;"
-                    onclick="editors.setVisibleEditor('messageDisableOverlay', true);">Speichern</button>
+                    onclick="WIM.EDITOR.disableUI(true)">Speichern</button>
             </form>
         </div>
 
         <!-- Entry: Info -->
         <div id="editorwindow-info" class="editorWindow">
             <form id="editor-form-info" action="api.php?action=ITEM-EDIT" method="post" name="form">
-                <a class="close" onclick="editors.closeEditor('info');">×</a>
+                <a class="close" onclick="WIM.EDITOR.closeEditor('info');">×</a>
 
                 <input id="editor-id-info" name="id" type="hidden" value="-1">
                 <input name="typetag" type="hidden" value="<?=TypeTag::INFO;?>">
@@ -278,31 +381,44 @@ if (!($entriesManager->isReady &&
                 <h2>Mitteilung hinzufügen</h2>
                 <p>Mitteilungen werden unter 'Aktuelle Informationen' angezeigt und haben kein Ablaufdatum.</p>
                 
-                <input id="editor-info-input-title" name="title" placeholder="Titel" type="text" list=entry-columns
-                    oninput="editors.editorInfoValidation();">
-                <input id="editor-info-input-subtitle" name="subtitle" placeholder="Beschreibung (optional)" type="text">
+                <input id="editor-info-input-payload" name="payload" type="hidden">
+                <input id="editor-info-input-title" placeholder="Titel" type="text" list=entry-columns
+                    oninput="WIM.EDITOR.infoEditor.validate()">
+                <input id="editor-info-input-description" placeholder="Beschreibung (optional)" type="text"
+                    oninput="WIM.EDITOR.infoEditor.validate()">
+                <input id="editor-info-input-category" placeholder="Kategorie (optional)" type="text"
+                    oninput="WIM.EDITOR.infoEditor.validate()">
+                <input id="editor-info-input-location" placeholder="Ort (optional)" type="text"
+                    oninput="WIM.EDITOR.infoEditor.validate()">
+                <select id="editor-info-select-vehicle" style="width:auto;"
+                    onchange="WIM.EDITOR.infoEditor.validate()">
+                </select>
+
+                <hr/>
+                
+                <section id="editor-info-preview" class="preview"></section>
 
                 <hr/>
 
                 <h3 id="editor-info-datetime-header-start">In der Liste sichtbar ab:</h3>
                 <input id="editor-info-datetime-input-start" type="date" style="width:auto;" name="dateStart"
-                    oninput="editors.editorInfoValidation();">
+                    oninput="WIM.EDITOR.infoEditor.validate()">
                     
                 <h3 id="editor-info-datetime-header-end">Wird aus der Liste entfernt nach:</h3>
                 <input id="editor-info-datetime-input-end" type="date" style="width:auto;" name="dateEnd"
-                    oninput="editors.editorInfoValidation();">
+                    oninput="WIM.EDITOR.infoEditor.validate()">
 
                 <div class="tools" id="editor-info-datetime-tool" tool-withdate="false">
 
                     <button id="editor-info-datetime-tool-withdate" type="button"
-                        onclick="editors.setEditorToolArgs('editor-info-datetime-tool', 'tool-withdate', true); editors.editorInfoValidation();">
-                        <img src="res/ic_daterange_black.svg" style="width:20px">
+                        onclick="WIM.EDITOR.infoEditor.changeState('withdate'); WIM.EDITOR.infoEditor.validate()">
+                        <img src="res/ic_btn_daterange.svg" style="width:20px">
                         <span>Zeitraum festlegen</span>
                     </button>
 
                     <button id="editor-info-datetime-tool-nodate" type="button"
-                        onclick="editors.setEditorToolArgs('editor-info-datetime-tool', 'tool-withdate', false); editors.editorInfoValidation();">
-                        <img src="res/ic_notime_black.svg" style="width:20px">
+                        onclick="WIM.EDITOR.infoEditor.changeState('nodate');; WIM.EDITOR.infoEditor.validate()">
+                        <img src="res/ic_btn_notime.svg" style="width:20px">
                         <span>Dauerhaft Gültig</span>
                     </button>
 
@@ -310,7 +426,7 @@ if (!($entriesManager->isReady &&
 
                 <button id="editor-info-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;">Hinzufügen</button>
                 <button id="editor-info-action-delete" class="btn btn-input" type="button" style="background-color:#a00 !important; margin-top:5px;"
-                        onclick="editors.editorInvokeDelete('info');">Löschen</button>
+                        onclick="WIM.EDITOR.infoEditor.delete()">Löschen</button>
             
             </form>
         </div>
@@ -318,7 +434,7 @@ if (!($entriesManager->isReady &&
         <!-- Entry: Event -->
         <div id="editorwindow-event" class="editorWindow">
             <form id="editor-form-event" action="api.php?action=ITEM-EDIT" method="post" name="form">
-                <a class="close" onclick="editors.closeEditor('event');">×</a>
+                <a class="close" onclick="WIM.EDITOR.closeEditor('event');">×</a>
 
                 <input id="editor-id-event" name="id" type="hidden" value="-1">
                 <input name="typetag" type="hidden" value="<?=TypeTag::EVENT?>">
@@ -327,47 +443,62 @@ if (!($entriesManager->isReady &&
                 <p>Termine werden rechts in der Terminagenda angezeigt - von Start- bis Enddatum werden diese unter
                     'Aktuelle Informationen' angezeigt.</p>
 
-                <input id="editor-event-input-title" name="title" placeholder="Titel" type="text" list=entry-columns
-                    oninput="editors.editorEventValidation();">
-                <input id="editor-event-input-subtitle" name="subtitle" placeholder="Beschreibung (optional)" type="text">
+                <input id="editor-event-input-payload" name="payload" type="hidden">
+                <input id="editor-event-input-title" placeholder="Titel" type="text" list=entry-columns
+                    oninput="WIM.EDITOR.eventEditor.validate()">
+                <input id="editor-event-input-description" placeholder="Beschreibung (optional)" type="text"
+                    oninput="WIM.EDITOR.eventEditor.validate()">
+                <input id="editor-event-input-category" placeholder="Kategorie (optional)" type="text"
+                    oninput="WIM.EDITOR.eventEditor.validate()">
+                <input id="editor-event-input-location" placeholder="Ort (optional)" type="text"
+                    oninput="WIM.EDITOR.eventEditor.validate()">
+                <select id="editor-event-select-vehicle" style="width:auto;"
+                    onchange="WIM.EDITOR.eventEditor.validate()">
+                </select>
 
-                <hr>
+                <hr/>
+                
+                <section id="editor-event-preview" class="preview"></section>
+
+                <hr/>
 
                 <h3 id="editor-event-datetime-header-start">Startdatum / -zeit</h3>
                 <input id="editor-event-datetime-date-start" type="date" style="width:auto;" name="dateStart"
-                    oninput="editors.editorEventValidation();">
+                    oninput="WIM.EDITOR.eventEditor.validate()">
                 <input id="editor-event-datetime-time-start" type="time" style="width:auto;" name="timeStart"
-                    oninput="editors.editorEventValidation();">
+                    oninput="WIM.EDITOR.eventEditor.validate()">
+
                 <br>
+
                 <h3 id="editor-event-datetime-header-end">Enddatum / -zeit</h3>
                 <input id="editor-event-datetime-date-end" type="date" style="width:auto;" name="dateEnd"
-                    oninput="editors.editorEventValidation();">
+                    oninput="WIM.EDITOR.eventEditor.validate()">
                 <input id="editor-event-datetime-time-end" type="time" style="width:auto;" name="timeEnd"
-                    oninput="editors.editorEventValidation();">
+                    oninput="WIM.EDITOR.eventEditor.validate()">
 
-                <div class="tools" id="editor-event-tool-datetime" tool-daterange="false" tool-time="false">
+                <div class="tools" id="editor-event-tools" tool-withrange="false" tool-withtime="false">
 
-                    <button id="editor-event-datetime-tools-startend" type="button"
-                        onclick="editors.setEditorToolArgs('editor-event-tool-datetime', 'tool-daterange', true); editors.editorEventValidation();">
-                        <img src="res/ic_daterange_black.svg" style="width:20px">
+                    <button id="editor-event-datetime-tools-withrange" type="button"
+                        onclick="WIM.EDITOR.eventEditor.changeStateWithRange(true); WIM.EDITOR.eventEditor.validate()">
+                        <img src="res/ic_btn_daterange.svg" style="width:20px">
                         <span>Start & Ende</span>
                     </button>
 
-                    <button id="editor-event-datetime-tools-onlystart" type="button"
-                        onclick="editors.setEditorToolArgs('editor-event-tool-datetime', 'tool-daterange', false); editors.editorEventValidation();">
-                        <img src="res/ic_onlystart_black.svg" style="width:20px">
+                    <button id="editor-event-datetime-tools-norange" type="button"
+                        onclick="WIM.EDITOR.eventEditor.changeStateWithRange(false); WIM.EDITOR.eventEditor.validate()">
+                        <img src="res/ic_btn_onlystart.svg" style="width:20px">
                         <span>Nur Start</span>
                     </button>
 
                     <button id="editor-event-datetime-tools-withtime" type="button"
-                        onclick="editors.setEditorToolArgs('editor-event-tool-datetime', 'tool-time', true); editors.editorEventValidation();">
-                        <img src="res/ic_addtime_black.svg" style="width:26px;margin: -2px 0 0 -1px;">
+                        onclick="WIM.EDITOR.eventEditor.changeStateWithTime(true); WIM.EDITOR.eventEditor.validate()">
+                        <img src="res/ic_action_addtime.svg" style="width:26px;margin: -2px 0 0 -1px;">
                         <span>Mit Uhrzeit</span>
                     </button>
 
                     <button id="editor-event-datetime-tools-notime" type="button"
-                        onclick="editors.setEditorToolArgs('editor-event-tool-datetime', 'tool-time', false); editors.editorEventValidation();">
-                        <img src="res/ic_notime_black.svg" style="width:20px">
+                        onclick="WIM.EDITOR.eventEditor.changeStateWithTime(false); WIM.EDITOR.eventEditor.validate()">
+                        <img src="res/ic_btn_notime.svg" style="width:20px">
                         <span>Ohne Uhrzeit</span>
                     </button>
 
@@ -375,99 +506,114 @@ if (!($entriesManager->isReady &&
 
                 <button id="editor-event-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;">Hinzufügen</button>
                 <button id="editor-event-action-delete" class="btn btn-input" type="button" style="background-color:#a00 !important; margin-top:5px;"
-                        onclick="editors.editorInvokeDelete('event');">Löschen</button>
+                        onclick="WIM.EDITOR.eventEditor.delete()">Löschen</button>
 
             </form>
         </div>
 
-        <!-- Entry: UniqueTask -->
-        <div id="editorwindow-uniquetask" class="editorWindow">
-            <form id="editor-form-uniquetask" action="api.php?action=ITEM-EDIT" method="post" name="form">
-                <a class="close" onclick="editors.closeEditor('uniquetask');">×</a>
+        <!-- Entry: Task -->
+        <div id="editorwindow-task" class="editorWindow">
+            <form id="editor-form-task" action="api.php?action=ITEM-EDIT" method="post" name="form">
+                <a class="close" onclick="WIM.EDITOR.closeEditor('task');">×</a>
 
-                <input id="editor-id-uniquetask" name="id" type="hidden" value="-1">
-                <input name="typetag" type="hidden" value="<?=TypeTag::UNIQUETASK;?>">
+                <input id="editor-id-task" name="id" type="hidden" value="-1">
+                <input name="typetag" type="hidden" value="<?=TypeTag::TASK;?>">
 
                 <h2>Einzelne Aufgabe hinzufügen</h2>
                 <p>Die Aufgaben werden in der "Zu Erledigen"-Liste angezeigt, bis das Ablaufdatum erreicht wurde.
                     Zusätzlich kann ein Datum angegeben werden, ab dem die Aufgabe angezeigt wird.</p>
                 
-                <input id="editor-uniquetask-input-title" name="title" placeholder="Titel" type="text" list=entry-columns 
-                    oninput="editors.editorUniqueTaskValidation();">
-                <input id="editor-uniquetask-input-subtitle" name="subtitle" placeholder="Beschreibung (optional)" type="text">
-
-                <select id="editor-uniquetask-select-vehicle" style="width:auto;" name="vehicle"
-                    onchange="editors.editorUniqueTaskValidation();">
-                    <option value=""> Kein Fahrzeug </option>
-                    <?= urldecode($settings->GetWacheKfz()); ?>
+                <input id="editor-task-input-payload" name="payload" type="hidden">
+                <input id="editor-task-input-title" placeholder="Titel" type="text" list=entry-columns
+                    oninput="WIM.EDITOR.taskEditor.validate()">
+                <input id="editor-task-input-description" placeholder="Beschreibung (optional)" type="text"
+                    oninput="WIM.EDITOR.taskEditor.validate()">
+                <input id="editor-task-input-category" placeholder="Kategorie (optional)" type="text"
+                    oninput="WIM.EDITOR.taskEditor.validate()">
+                <input id="editor-task-input-location" placeholder="Ort (optional)" type="text"
+                    oninput="WIM.EDITOR.taskEditor.validate()">
+                <select id="editor-task-select-vehicle" style="width:auto;"
+                    onchange="WIM.EDITOR.taskEditor.validate()">
                 </select>
 
-                <hr>
+                <hr/>
+                
+                <section id="editor-task-preview" class="preview"></section>
 
-                <h3 id="editor-uniquetask-datetime-header-start">In der Liste sichtbar ab:</h3>
-                <input id="editor-uniquetask-datetime-date-start" type="date" style="width:auto;" name="dateStart"
-                    oninput="editors.editorUniqueTaskValidation();">
-                <input id="editor-uniquetask-datetime-time-start" type="time" style="width:auto;" name="timeStart"
-                    oninput="editors.editorUniqueTaskValidation();">
-                <div id="editor-uniquetask-datetime-beforeEvent-bound">
-                    <input id="editor-uniquetask-datetime-beforeEvent" type="checkbox" name="showAsEvent"
-                        onchange="editors.editorUniqueTaskValidation();">
-                    <label for="editor-uniquetask-datetime-beforeEvent" class="checkbox-label">Vorher als Termin
+                <hr/>
+
+                <h3 id="editor-task-datetime-header-start">In der Liste sichtbar ab:</h3>
+                <input id="editor-task-datetime-date-start" type="date" style="width:auto;" name="dateStart"
+                    oninput="WIM.EDITOR.taskEditor.validate()">
+                <input id="editor-task-datetime-time-start" type="time" style="width:auto;" name="timeStart"
+                    oninput="WIM.EDITOR.taskEditor.validate()">
+                <div id="editor-task-datetime-beforeEvent-bound">
+                    <input id="editor-task-datetime-beforeEvent" type="checkbox" name="showAsEvent"
+                        onchange="WIM.EDITOR.taskEditor.validate()">
+                    <label for="editor-task-datetime-beforeEvent" class="checkbox-label">Vorher als Termin
                         anzeigen</label>
                 </div>
-                <h3 id="editor-uniquetask-datetime-header-end">Zu Erledigen bis:</h3>
-                <input id="editor-uniquetask-datetime-date-end" type="date" style="width:auto;" name="dateEnd"
-                    oninput="editors.editorUniqueTaskValidation();">
-                <input id="editor-uniquetask-datetime-time-end" type="time" style="width:auto;" name="timeEnd"
-                    oninput="editors.editorUniqueTaskValidation();">
+                <h3 id="editor-task-datetime-header-end">Zu Erledigen bis:</h3>
+                <input id="editor-task-datetime-date-end" type="date" style="width:auto;" name="dateEnd"
+                    oninput="WIM.EDITOR.taskEditor.validate()">
+                <input id="editor-task-datetime-time-end" type="time" style="width:auto;" name="timeEnd"
+                    oninput="WIM.EDITOR.taskEditor.validate()">
 
-                <div class="tools" id="editor-uniquetask-tool-datetime" tool-daterange="false">
+                <div class="tools" id="editor-task-tools" tool-withrange="false">
 
-                    <button id="editor-uniquetask-datetime-tools-startend" type="button"
-                        onclick="editors.setEditorToolArgs('editor-uniquetask-tool-datetime', 'tool-daterange', true); editors.editorUniqueTaskValidation();">
-                        <img src="res/ic_daterange_black.svg" style="width:20px">
+                    <button id="editor-task-datetime-tools-startend" type="button"
+                        onclick="WIM.EDITOR.taskEditor.changeStateWithRange(true); WIM.EDITOR.taskEditor.validate()">
+                        <img src="res/ic_btn_daterange.svg" style="width:20px">
                         <span>Mit Startdatum</span>
                     </button>
 
-                    <button id="editor-uniquetask-datetime-tools-onlyend" type="button"
-                        onclick="editors.setEditorToolArgs('editor-uniquetask-tool-datetime', 'tool-daterange', false); editors.editorUniqueTaskValidation();">
-                        <img src="res/ic_onlystart_black.svg" style="width:20px">
+                    <button id="editor-task-datetime-tools-onlyend" type="button"
+                        onclick="WIM.EDITOR.taskEditor.changeStateWithRange(false); WIM.EDITOR.taskEditor.validate()">
+                        <img src="res/ic_btn_onlystart.svg" style="width:20px">
                         <span>Ohne Startdatum</span>
                     </button>
 
                 </div>
 
-                <button id="editor-uniquetask-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;">Hinzufügen</button>
-                <button id="editor-uniquetask-action-delete" class="btn btn-input" type="button" style="background-color:#a00 !important; margin-top:5px;"
-                        onclick="editors.editorInvokeDelete('uniquetask');">Löschen</button>
+                <button id="editor-task-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;">Hinzufügen</button>
+                <button id="editor-task-action-delete" class="btn btn-input" type="button" style="background-color:#a00 !important; margin-top:5px;"
+                        onclick="WIM.EDITOR.taskEditor.delete()">Löschen</button>
             </form>
         </div>
 
-        <!-- Entry: CycledTask -->
-        <div id="editorwindow-cycledtask" class="editorWindow">
-            <form id="editor-form-cycledtask" action="api.php?action=ITEM-EDIT" method="post" name="form">
-                <a class="close"  onclick="editors.closeEditor('cycledtask');">×</a>
+        <!-- Entry: Recurring -->
+        <div id="editorwindow-recurring" class="editorWindow">
+            <form id="editor-form-recurring" action="api.php?action=ITEM-EDIT" method="post" name="form">
+                <a class="close"  onclick="WIM.EDITOR.closeEditor('recurring')">×</a>
 
-                <input id="editor-id-cycledtask" name="id" type="hidden" value="-1">
-                <input name="typetag" type="hidden" value="<?=TypeTag::CYCLEDTASK?>">
+                <input id="editor-id-recurring" name="id" type="hidden" value="-1">
+                <input name="typetag" type="hidden" value="<?=TypeTag::RECURRING?>">
 
                 <h2>Tagesaufgabe hinzufügen</h2>
                 <p>Tagesaufgaben werden in der "Zu Erledigen"-Liste angezeigt. Dabei wird kein festes Datum angegeben,
                     sondern nach einem Schema automatisch wiederholt.</p>
  
-                <input id="editor-cycledtask-input-subtitle" name="subtitle" placeholder="Beschreibung"
-                    oninput="editors.editorCycledTaskValidation();" type="text">
-                <select id="editor-cycledtask-select-vehicle" style="width:auto;" name="vehicle"
-                    onchange="editors.editorCycledTaskSetVehicleTiming(); editors.editorCycledTaskValidation();"
-                    <?= urldecode($settings->GetWacheDefTiming()); ?>>
-                    <option value=""> Kein Fahrzeug </option>
-                    <?= urldecode($settings->GetWacheKfz()); ?>
+                <input id="editor-recurring-input-payload" name="payload" type="hidden">
+                <input id="editor-recurring-input-title" placeholder="Titel" type="text" list=entry-columns
+                    oninput="WIM.EDITOR.recurringEditor.validate()">
+                <input id="editor-recurring-input-description" placeholder="Beschreibung (optional)" type="text"
+                    oninput="WIM.EDITOR.recurringEditor.validate()">
+                <input id="editor-recurring-input-category" placeholder="Kategorie (optional)" type="text"
+                    oninput="WIM.EDITOR.recurringEditor.validate()">
+                <input id="editor-recurring-input-location" placeholder="Ort (optional)" type="text"
+                    oninput="WIM.EDITOR.recurringEditor.validate()">
+                <select id="editor-recurring-select-vehicle" style="width:auto;"
+                    onchange="WIM.EDITOR.recurringEditor.changeTiming(); WIM.EDITOR.recurringEditor.validate()">
                 </select>
 
-                <hr />
+                <hr/>
+                
+                <section id="editor-recurring-preview" class="preview"></section>
 
-                <select id="editor-cycledtask-cyclemode-weekly-select" style="width:auto;" name="weekday"
-                    onchange="editors.editorCycledTaskValidation();">
+                <hr/>
+
+                <select id="editor-recurring-cyclemode-weekly-select" style="width:auto;" name="weekday"
+                    onchange="WIM.EDITOR.recurringEditor.validate()">
                     <option value="1"> Montag </option>
                     <option value="2"> Dienstag </option>
                     <option value="3"> Mittwoch </option>
@@ -476,11 +622,10 @@ if (!($entriesManager->isReady &&
                     <option value="6"> Samstag </option>
                     <option value="0"> Sonntag </option>
                 </select>
-                <select id="editor-cycledtask-cyclemode-monthly-select" style="width:auto;" name="dayofmonth"
-                    onchange="editors.editorCycledTaskValidation();">
+                <select id="editor-recurring-cyclemode-monthly-select" style="width:auto;" name="dayofmonth"
+                    onchange="WIM.EDITOR.recurringEditor.validate()">
                     <option value="1"> Ersten Tag (1.) </option>
                     <option value="-1"> Letzten Tag </option>
-                    <option value="-2"> Letzten Freitag </option>
                     <option value="2"> 2. </option>
                     <option value="3"> 3. </option>
                     <option value="4"> 4. </option>
@@ -513,310 +658,180 @@ if (!($entriesManager->isReady &&
                     <option value="31"> 31. (fällt sonst aus) </option>
                 </select>
 
-                <input id="editor-cycledtask-datetime-time-start" type="time" style="width:auto;" name="timeStart"
-                    oninput="editors.editorCycledTaskValidation();">
-                <input id="editor-cycledtask-datetime-time-end" type="time" style="width:auto;" name="timeEnd"
-                    oninput="editors.editorCycledTaskValidation();">
+                <input id="editor-recurring-datetime-time-start" type="time" style="width:auto;" name="timeStart"
+                    oninput="WIM.EDITOR.recurringEditor.validate()">
+                <input id="editor-recurring-datetime-time-end" type="time" style="width:auto;" name="timeEnd"
+                    oninput="WIM.EDITOR.recurringEditor.validate()">
 
-                <h3 id="editor-cycledtask-cyclemode-header" style="margin:3px 0 10px 1px;"></h3>
+                <h3 id="editor-recurring-cyclemode-header" style="margin:3px 0 10px 1px;"></h3>
 
-                <input id="editor-cycledtask-input-cyclemode" name="cyclemode" value="week" type="hidden">
-                <div class="tools" id="editor-cycledtask-tool-cyclemode" tool-mode="week" style="border-top:1px solid;">
+                <input id="editor-recurring-input-cyclemode" name="cyclemode" value="week" type="hidden">
+                <div class="tools" id="editor-recurring-tool-cyclemode" tool-mode="week" style="border-top:1px solid;">
 
-                    <button id="editor-cycledtask-tool-cyclemode-daily" type="button"
-                        onclick="editors.setEditorToolArgs('editor-cycledtask-tool-cyclemode', 'tool-mode', 'daily'); editors.editorCycledTaskSetVehicleTiming(); editors.editorCycledTaskValidation();">
-                        <img src="res/ic_addtime_black.svg" style="width:20px">
+                    <button id="editor-recurring-tool-cyclemode-daily" type="button"
+                        onclick="WIM.EDITOR.recurringEditor.changeState('daily'); WIM.EDITOR.recurringEditor.validate()">
+                        <img src="res/ic_action_addtime.svg" style="width:20px">
                         <span>Täglich</span>
                     </button>
 
-                    <button id="editor-cycledtask-tool-cyclemode-weekly" type="button"
-                        onclick="editors.setEditorToolArgs('editor-cycledtask-tool-cyclemode', 'tool-mode', 'week'); editors.editorCycledTaskSetVehicleTiming(); editors.editorCycledTaskValidation();">
-                        <img src="res/ic_daterange_black.svg" style="width:20px">
+                    <button id="editor-recurring-tool-cyclemode-weekly" type="button"
+                        onclick="WIM.EDITOR.recurringEditor.changeState('weekly'); WIM.EDITOR.recurringEditor.validate()">
+                        <img src="res/ic_btn_daterange.svg" style="width:20px">
                         <span>Wöchentlich</span>
                     </button>
 
-                    <button id="editor-cycledtask-tool-cyclemode-monthly" type="button"
-                        onclick="editors.setEditorToolArgs('editor-cycledtask-tool-cyclemode', 'tool-mode', 'month'); editors.editorCycledTaskSetVehicleTiming(); editors.editorCycledTaskValidation();">
-                        <img src="res/ic_onlystart_black.svg" style="width:20px">
+                    <button id="editor-recurring-tool-cyclemode-monthly" type="button"
+                        onclick="WIM.EDITOR.recurringEditor.changeState('monthly'); WIM.EDITOR.recurringEditor.validate()">
+                        <img src="res/ic_btn_onlystart.svg" style="width:20px">
                         <span>Monatlich</span>
+                    </button>
+
+                    <button id="editor-recurring-tool-cyclemode-lastday" type="button"
+                        onclick="WIM.EDITOR.recurringEditor.changeState('lastday'); WIM.EDITOR.recurringEditor.validate()">
+                        <img src="res/ic_btn_onlystart.svg" style="width:20px">
+                        <span>Letzter Wochentag</span>
                     </button>
 
                 </div>
 
-                <button id="editor-cycledtask-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;">Hinzufügen</button>
-                <button id="editor-cycledtask-action-delete" class="btn btn-input" type="button" style="background-color:#a00 !important; margin-top:5px;"
-                        onclick="editors.editorInvokeDelete('cycledtask');">Löschen</button>
+                <button id="editor-recurring-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;">Hinzufügen</button>
+                <button id="editor-recurring-action-delete" class="btn btn-input" type="button" style="background-color:#a00 !important; margin-top:5px;"
+                        onclick="WIM.EDITOR.recurringEditor.delete()">Löschen</button>
 
             </form>
         </div>
+        <div id="editorwindow-hidetask" class="editorWindow">
+            <form id="editor-form-hidetask" action="api.php?action=HIDE-ITEM" method="post" name="form">
+                <a class="close" onclick="WIM.EDITOR.closeEditor('hidetask');">×</a>
 
-        <!-- Template: Fahrzeugtausch > UniqueTask | Event -->
-        <div id="editorwindow-templatekfz" class="editorWindow">
-            <form id="editor-form-templatekfz" action="api.php?action=ITEM-EDIT" method="post" name="form">
-                <a class="close" onclick="editors.closeEditor('templatekfz');">×</a>
-
-                <input name="id" type="hidden" value="-1">
-                <input id="editor-templatekfz-typetag" name="typetag" type="hidden" value="<?=TypeTag::UNIQUETASK;?>">
-
-                <input id="editor-templatekfz-hidden-title" name="title" value="" type="hidden">
-                <input id="editor-templatekfz-hidden-subtitle" name="subtitle" value="" type="hidden">
-
-                <h2>Vorlage: Fahrzeugtausch &amp; MDR</h2>
-                <p>Bei einem geplanten Fahrzeugtausch kann hier das Datum angegeben werden - die Aufgabe wird dann automatisch erstellt. Für den Reserve-RTW wird nur ein Termin erzeugt.</p>
+                <h2>Tagesaufgabe ausblenden</h2>
+                <p>Sollte z.B. die Wäsche an einem anderen Tag abgeholt werden, kann hier die Tagesaufgabe eines bestimmten Datums deaktiviert werden.</p>
                 
-                <h3>Welches Fahrzeug?</h3>
-                <select id="editor-templatekfz-select-vehicle" style="width:auto;" name="vehicle"
-                    onchange="editors.editorTemplateKfzValidation();">
-                    <?= urldecode($settings->GetWacheKfz()); ?>
-                </select>
+                <input id="editor-hidetask-tool-mode" name="mode" value="none" type="hidden">
+                <input id="editor-hidetask-input-hiddenid" name="hiddenid" value="-1" type="hidden">
 
-                <h3>Warum?</h3>
-                <select id="editor-templatekfz-select-reason" style="width:auto;"
-                    onchange="editors.editorTemplateKfzValidation();">
-                    <option value="MDR"> Monatsdesinfektion </option>
-                    <option value="Werkstatt"> Werkstatt </option>
-                </select>
-
-                <hr>
-
-                <input name="dateStart" id="editor-templatekfz-hidden-date-start" value="" type="hidden">
-                <input name="timeStart" id="editor-templatekfz-hidden-time-start" value="" type="hidden">
-                <input name="dateEnd" id="editor-templatekfz-hidden-date-end" value="" type="hidden">
-                <input name="timeEnd" id="editor-templatekfz-hidden-time-end" value="" type="hidden">
-
-                <input name="showAsEvent" value="on" type="hidden">
-
-                <h3>An welchem Tag?</h3>
-                <input id="editor-templatekfz-datetime-date" type="date" style="width:auto;"
-                    oninput="editors.editorTemplateKfzValidation();">
-
-                <button id="editor-templatekfz-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;">Hinzufügen</button>
-            </form>
-        </div>
-
-        <!-- Template: Termin & Vorbereitung > UniqueTask & Event -->
-        <div id="editorwindow-templateevwt" class="editorWindow">
-            <form id="editor-form-templateevwt" action="admin.php#entries-TEMPLATE-anchor" method="post" name="form">
-                <a class="close" onclick="editors.closeEditor('templateevwt');">×</a>
-
-                <h2>Vorlage: Termin &amp; Vorbereitung</h2>
-                <p>Für manche Termine muss im Vorfeld eine Aufgabe erledigt werden, z.B. Brandschutzschulung - und davor den Parkplatz räumen. Um nicht zwei Einträge für ein Ereignis zu erstellen, kannst du das hier verbinden. Es wird ein Termin erstellt und eine einzelne Aufgabe vor dem Termin.</p>
-                
-                <h3>Angaben zum Termin</h3>
-                <input id="editor-templateevwt-input-event" placeholder="Termintitel (z.B. Brandschutzschulung)"
-                    oninput="editors.editorTemplateEvWTValidation();" type="text">
-                <input id="editor-templateevwt-input-eventsub" placeholder="Beschreibung (Optional)"
-                    type="text">
-
-                <input id="editor-templateevwt-datetime-date" type="date" style="width:auto;" 
-                    oninput="editors.editorTemplateEvWTValidation();">
-                <input id="editor-templateevwt-datetime-time" type="time" style="width:auto;" 
-                    oninput="editors.editorTemplateEvWTValidation();">
-
-                <hr>
-
-                <h3>Welche Vorbereitung muss vor dem Termin erfolgen?</h3>
-                <input id="editor-templateevwt-input-task" placeholder="Aufgabe (z.B. Der Parkplatz ist bis Beginn zu räumen.)"
-                    oninput="editors.editorTemplateEvWTValidation();" type="text">
-
-                <h3>Wie viel Stunden vorher soll die Aufgabe angezeigt werden?</h3>
-                <input id="editor-templateevwt-input-projection" type="number" style="width:auto;" 
-                    oninput="editors.editorTemplateEvWTValidation();">
-
-                <button id="editor-templateevwt-btn-save" class="btn btn-input" type="button" style="margin-top:10px;"
-                    onclick="editors.editorTemplateEvWTInvokeSubmit();">Hinzufügen</button>
-            </form>
-        </div>
-
-        <!-- Template: Tagesaufgabe ersetzen > CycledTask & UniqueTask -->
-        <div id="editorwindow-templatebusy" class="editorWindow">
-            <form id="editor-form-templatebusy" action="admin.php#entries-TEMPLATE-anchor" method="post" name="form">
-                <a class="close" onclick="editors.closeEditor('templatebusy');">×</a>
-
-                <h2>Vorlage: Tagesaufgabe ersetzen</h2>
-                <p>Sollte z.B. die Wäsche an einem anderen Tag abgeholt werden, kann hier die Tagesaufgabe eines bestimmten Datums deaktiviert und bei Bedarf mit einem einzelnem Termin ersetzt werden.</p>
-                
-                <input id="editor-templatebusy-tool-mode" name="mode" value="none" type="hidden">
-
-                <input id="editor-id-templatebusy" name="id" type="hidden" value="-1">
-                <input id="editor-templatebusy-input-replacedid" name="replacedId" value="-1" type="hidden">
-
-                <h3 id="editor-templatebusy-hr-search-header">Tag, an dem die Tagesaufgabe ausfällt</h3>
-                <input id="editor-templatebusy-datetime-date" type="date" style="width:auto;" 
-                    oninput="editors.editorTemplateBusyValidation();">
-                <button id="editor-templatebusy-btn-searchtask" class="btn btn-input" type="button" style="width: auto !important; padding: 12px !important; display: inline-block;"
-                    onclick="editors.editorTemplateBusyInvokeSearch();">Aufgabe suchen</button>
+                <h3 id="editor-hidetask-hr-search-header">Tag, an dem die Tagesaufgabe ausfällt</h3>
+                <input id="editor-hidetask-datetime-date" type="date" style="width:auto;" name="hiddendate"
+                    oninput="WIM.EDITOR.hidetaskEditor.validate()">
+                <button id="editor-hidetask-btn-searchtask" class="btn btn-input" type="button" style="width: auto !important;padding: 11px !important;display: inline-block;line-height: 22px !important;vertical-align: top;"
+                    onclick="WIM.EDITOR.hidetaskEditor.invokeSearch()">Aufgabe suchen</button>
 
                 <section>
-                    <ul id="editor-templatebusy-searchresult" class="group searchresult-group"></ul>
+                    <ul id="editor-hidetask-searchresult" class="group searchresult-group"></ul>
                 </section>
 
-                <hr id="editor-templatebusy-hr-resultdiv">
+                <hr id="editor-hidetask-hr-resultdiv">
 
-                <h3 id="editor-templatebusy-hr-replace-header" style="margin-top: 10px;">Gewählte Tagesaufgabe ersetzen durch:</h3>
-
-                <input id="editor-templatebusy-input-title" name="title" placeholder="Titel" type="text"
-                    oninput="editors.editorTemplateBusyValidation();">
-                <input id="editor-templatebusy-input-subtitle" name="subtitle" placeholder="Beschreibung (optional)" type="text">
-
-                <h3 id="editor-templatebusy-datetime-header-start">Tagesaufgabe von / bis:</h3>
-                <input id="editor-templatebusy-datetime-date-start" type="date" style="width:auto;" name="dateStart"
-                    oninput="editors.editorTemplateBusyValidation();">
-                <input id="editor-templatebusy-datetime-time-start" type="time" style="width:auto;" name="timeStart"
-                    oninput="editors.editorTemplateBusyValidation();">
-                <input id="editor-templatebusy-datetime-time-end" type="time" style="width:auto;" name="timeEnd"
-                    oninput="editors.editorTemplateBusyValidation();">
-
-                <button id="editor-templatebusy-btn-save" class="btn btn-input" type="button" style="margin-top:10px;"
-                    onclick="editors.editorTemplateBusyInvokeSubmit();">Hinzufügen</button>
-                <button id="editor-templatebusy-action-delete" class="btn btn-input" type="button" style="background-color:#a00 !important; margin-top:5px;"
-                    onclick="editors.editorTemplateBusyInvokeDelete();">Löschen</button>
+                <button id="editor-hidetask-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;">Ausblenden</button>
+                <button id="editor-hidetask-action-delete" class="btn btn-input" type="button" style="background-color:#a00 !important; margin-top:5px;"
+                    onclick="editors.editorTemplateBusyInvokeDelete();">Wieder Einblenden</button>
             </form>
         </div>
+
+
 
     </div>
 
     <!-- LAYOUT -->
     <section style="max-width:900px;margin:0 auto;">
 
-        <!-- Vorlagen -->
-        <div class="group">
-            <h2 id="entries-template-anchor" class="nopointer">Vorlagen</h2>
-            <div class="tools tools-expand">
-                <button onclick="editors.editorTemplateKfzCreate();">
-                    <img src="res/ic_template_kfz.svg">
-                    <span>Fahrzeugtausch &amp; MDR</span>
-                </button>
-                <button onclick="editors.editorTemplateEvWTCreate();">
-                    <img src="res/ic_template_evwt.svg">
-                    <span>Termin &amp; Vorbereitung</span>
-                </button>
-                <button onclick="editors.editorTemplateBusyCreate();">
-                    <img src="res/ic_template_busy.svg">
-                    <span>Tagesaufgabe verschieben</span>
-                </button>
-            </div>
-            <ul style="height:10px;"></ul>
-        </div>
-
-        <!-- Einträge -->
+        <!-- Entries -->
         <?php
 
-            $html = "";
+            $infoList = $entries->LoadEntries(RequestType::ADMIN_INFO);
+            $taskList = $entries->LoadEntries(RequestType::ADMIN_TASK);
+            $eventList = $entries->LoadEntries(RequestType::ADMIN_EVENT);
+            $recurringList = $entries->LoadEntries(RequestType::ADMIN_RECURRING);
+
+            if ($infoList === false ||
+                $taskList === false ||
+                $eventList === false ||
+                $recurringList === false) 
+            { 
+                $html = "<div id='nodata'>";
+                $html .= "<h2>Keine Verbindung zum WIM</h2>";
+                $html .= "<p>Leider konnte ein Teil der Daten nicht abgerufen werden:</p>";
+                $html .= $infoList === false ? "<p>- Mitteilungen (INFO)</p>" : "";
+                $html .= $taskList === false ? "<p>- Aufgaben (TASK)</p>" : "";
+                $html .= $eventList === false ? "<p>- Termine (EVENT)</p>" : "";
+                $html .= $recurringList === false ? "<p>- Tagesaufgaben (RECURRING)</p>" : "";
+                $html .= "<p>Bei der Aktualisierung des WIM kann es immerwieder zu kleinen Fehlern kommen. Melde dich beim Verantwortlichen, damit das Problem behoben werden kann.</p>";
+                $html .= "</div>";
+                die($html); 
+            }
+
+            $html = '';
             
-            // Gruppe: INFO
-            $list = $entriesManager->GenerateHTML(RequestType::ONLYINFO, true);
-
-            $html .= "<div class=\"group\">";
-            $html .= "  <h2".($list==""?" class=\"nopointer\"":"")." id=\"entries-".TypeTag::INFO."-anchor\"".($list==""?">":" onclick=\"editors.toggleExpand(this);\"><span class=\"arrow\">&nbsp;</span>")."Mitteilungen</h2>";
-            $html .= "  <div class=\"tools\">";
-            $html .= "    <button onclick=\"editors.editorInfoCreate();\">";
-            $html .= "      <img src=\"res/ic_add_white.svg\">";
-            $html .= "      <span>Mitteilung</span>";
-            $html .= "    </button>";
-            $html .= "  </div>";
-            $html .= "  <ul id=\"entries-info-list\" style=\"display:none;\">{$list}</ul>";
-            $html .= "</div>";
-
-            // Gruppe: EVENT
-            $list = $entriesManager->GenerateHTML(RequestType::ONLYEVENTS, true);
-
-            $html .= "<div class=\"group\">";
-            $html .= "  <h2".($list==""?" class=\"nopointer\"":"")." id=\"entries-".TypeTag::EVENT."-anchor\"".($list==""?">":" onclick=\"editors.toggleExpand(this);\"><span class=\"arrow\">&nbsp;</span>")."Termine</h2>";
-            $html .= "  <div class=\"tools\">";
-            $html .= "    <button onclick=\"editors.editorEventCreate();\">";
-            $html .= "      <img src=\"res/ic_add_white.svg\">";
-            $html .= "      <span>Termin hinzufügen</span>";
-            $html .= "    </button>";
-            $html .= "  </div>";
-            $html .= "  <ul id=\"entries-event-list\" style=\"display:none;\">{$list}</ul>";
-            $html .= "</div>";
-
-            // Gruppe: UNIQUETASK
-            $list = $entriesManager->GenerateHTML(RequestType::UNIQUETASK, true);
-
-            $html .= "<div class=\"group\">";
-            $html .= "  <h2".($list==""?" class=\"nopointer\"":"")." id=\"entries-".TypeTag::UNIQUETASK."-anchor\"".($list==""?">":" onclick=\"editors.toggleExpand(this);\"><span class=\"arrow\">&nbsp;</span>")."Einzelne Aufgabe</h2>";
-            $html .= "  <div class=\"tools\">";
-            $html .= "    <button onclick=\"editors.editorUniqueTaskCreate();\">";
-            $html .= "      <img src=\"res/ic_add_white.svg\">";
-            $html .= "      <span>Einzelne Aufgabe</span>";
-            $html .= "    </button>";
-            $html .= "  </div>";
-            $html .= "  <ul id=\"entries-uniquetask-list\" style=\"display:none;\">{$list}</ul>";
-            $html .= "</div>";
+            // Group: INFO
+            $listHtml = UserInterface::GenerateHtmlOfEntriesList($infoList, RequestType::ADMIN_INFO);
+            $html .= UserInterface::GenerateHtmlOfGroup(TypeTag::INFO, 'Mitteilungen', $listHtml == '', $listHtml, 
+                [[ 'title' => 'Mitteilung', 'onclick' => 'WIM.EDITOR.infoEditor.create()']]);
             
-            // Gruppe: CYCLEDTASK
-            $list = $entriesManager->GenerateHTML(RequestType::CYCLEDTASK, true);
+            // Group: EVENT
+            $listHtml = UserInterface::GenerateHtmlOfEntriesList($eventList, RequestType::ADMIN_EVENT);
+            $html .= UserInterface::GenerateHtmlOfGroup(TypeTag::EVENT, 'Termine', $listHtml == '', $listHtml, 
+                [[ 'title' => 'Termin', 'onclick' => 'WIM.EDITOR.eventEditor.create()']]);
 
-            $html .= "<div class=\"group\">";
-            $html .= "  <h2".($list==""?" class=\"nopointer\"":"")." id=\"entries-".TypeTag::CYCLEDTASK."-anchor\"".($list==""?">":" onclick=\"editors.toggleExpand(this);\"><span class=\"arrow\">&nbsp;</span>")."Tagesaufgaben</h2>";
-            $html .= "  <div class=\"tools\">";
-            $html .= "    <button onclick=\"editors.editorCycledTaskCreate();\">";
-            $html .= "      <img src=\"res/ic_add_white.svg\">";
-            $html .= "      <span>Wiederkehrende Aufgabe</span>";
-            $html .= "    </button>";
-            $html .= "  </div>";
-            $html .= "  <ul id=\"entries-cycledtask-list\" style=\"display:none;\">{$list}</ul>";
-            $html .= "</div>";
+            // Group: TASK
+            $listHtml = UserInterface::GenerateHtmlOfEntriesList($taskList, RequestType::ADMIN_TASK);
+            $html .= UserInterface::GenerateHtmlOfGroup(TypeTag::TASK, 'Einzelne Aufgaben', $listHtml == '', $listHtml, 
+                [[ 'title' => 'Einzelne Aufgabe', 'onclick' => 'WIM.EDITOR.taskEditor.create()']]);
             
+            // Group: RECURRING
+            $listHtml = UserInterface::GenerateHtmlOfEntriesList($recurringList, RequestType::ADMIN_RECURRING);
+            $html .= UserInterface::GenerateHtmlOfGroup(TypeTag::RECURRING, 'Tagesaufgaben', $listHtml == '', $listHtml, 
+                [
+                    [ 'title' => 'Ausblenden', 'onclick' => 'WIM.EDITOR.hidetaskEditor.create()' , 'icon' => 'ic_action_hide.svg' ],
+                    [ 'title' => 'Neue Tagesaufgabe', 'onclick' => 'WIM.EDITOR.recurringEditor.create()' ]
+                ]);
+
             echo $html;
 
         ?>
+        <br />
 
-        <!-- Benutzer -->
+        <!-- Users -->
         <?php
 
-            $html = "";
-            if ($_SESSION['WimAdmin']) {
+            $usersList = $users->LoadUsers();
+            if ($usersList === false) { $usersList = []; }
 
-                $html .= "<div class=\"group\" style=\"margin-top:20px;\">";
-                $html .= "  <h2 id=\"entries-users-anchor\" class=\"nopointer\">WIM - Benutzer &amp; Einstellungen</h2>";
-                $html .= "  <div class=\"tools\">";
-                $html .= "    <button onclick=\"editors.editorUserCreate();\">";
-                $html .= "      <img src=\"res/ic_add_white.svg\">";
-                $html .= "      <span>Neuer Benutzer</span>";
-                $html .= "    </button>";
-                $html .= "    <button onclick=\"editors.editorSettingsEdit('".($settings->GetMetaLastUpdate())."', '".($settings->GetMetaLastUser())."', '".($settings->GetWacheName())."', '".($settings->GetWacheUiResolution())."', '".($settings->GetWacheKfz())."', '".($settings->GetWacheDefTiming())."');\">";
-                $html .= "      <img src=\"res/ic_settings_white.svg\">";
-                $html .= "      <span>Einstellungen</span>";
-                $html .= "    </button>";
-                $html .= "  </div>";
-                $html .= "  <ul id=\"entries-users-list\">".$usersManager->GenerateHTML()."</ul>";
-                $html .= "</div>";
-                
+            $encodedLocation = \htmlentities($settings->GetLocation());
+            $encodedTiming = \htmlentities($settings->GetVehicleTiming());
+            if ($encodedLocation == '') { $encodedLocation = 'null'; }
+            if ($encodedTiming == '') { $encodedTiming = 'null'; }
+
+            $usersOptions = [];
+            if ($_SESSION['IsAdmin']) 
+            { 
+                $usersOptions[] = [ 'title' => 'Neuer Benutzer', 'onclick' => 'WIM.EDITOR.userEditor.create()' ]; 
+                $usersOptions[] = [ 'title' => 'Einstellungen', 'onclick' => "WIM.EDITOR.settingsEditor.create('{$settings->GetStationName()}','{$settings->GetUiResolution()}', $encodedLocation, $encodedTiming)", 'icon' => 'ic_action_settings.svg' ]; 
             }
+
+            $listHtml = UserInterface::GenerateHtmlOfUsersList($usersList);
+            $html = UserInterface::GenerateHtmlOfGroup('users', 'Benutzer &amp; Einstellungen', $listHtml == '', $listHtml, $usersOptions);
             echo $html;
 
         ?>
+        <br />
 
-        <!-- Kalendermodule -->
+        <!-- Auto-Modules -->
         <?php
 
-            $html = "";
-            if ($_SESSION['WimAdmin']) {
+            // create module-html
+            $listHtml = '';
+            $listHtml .= $moduleAbfall->getAdminEntry();
+            $listHtml .= $moduleMalteser->getAdminEntry();
 
-                $html .= "<div class=\"group\">";
-                $html .= "  <h2 id=\"entries-modules-anchor\" class=\"nopointer\">Module</h2>";
-                $html .= "  <div class=\"tools\">";
-                $html .= "    <button onclick=\"editors.editorModuleAbfallEdit('".($settings->GetMetaLastUpdate())."', '".($settings->GetMetaLastUser())."', '".($settings->GetAutoAbfallLink())."');\">";
-                $html .= "      <img src=\"res/ic_settings_white.svg\">";
-                $html .= "      <span>Abfallkalender</span>";
-                $html .= "    </button>";
-                $html .= "    <button onclick=\"editors.editorModuleMaltesercloudEdit('".($settings->GetMetaLastUpdate())."', '".($settings->GetMetaLastUser())."', '".($settings->GetAutoMalteserUser())."');\">";
-                $html .= "      <img src=\"res/ic_settings_white.svg\">";
-                $html .= "      <span>MalteserCloud</span>";
-                $html .= "    </button>";
-                $html .= "  </div>";
-                $html .= "  <ul>";
-                $html .= $entriesManager->GenerateMetaAutoAbfall(); 
-                $html .= "  </ul>";
-                $html .= "  <ul>";
-                $html .= $entriesManager->GenerateMetaAutoMaltesercloudEvents(); 
-                $html .= "  </ul>";
-                $html .= "</div>";
-                
+            $moduleOptions = [];
+            if ($_SESSION['IsAdmin']) 
+            { 
+                $moduleOptions[] = [ 'title' => $moduleAbfall->getName(), 'onclick' => $moduleAbfall->getAdminSettingsLink(), 'icon' => 'ic_action_settings.svg' ];
+                $moduleOptions[] = [ 'title' => $moduleMalteser->getName(), 'onclick' => $moduleMalteser->getAdminSettingsLink(), 'icon' => 'ic_action_settings.svg' ];
             }
+
+            // generate group for modules
+            $html = UserInterface::GenerateHtmlOfGroup('modules', 'Automatische Module', false, $listHtml, $moduleOptions);
             echo $html;
 
         ?>
@@ -830,14 +845,12 @@ if (!($entriesManager->isReady &&
                 <img id="message-icon-warn" src="res/ic_warn_black.svg" style="height: 60px; display: block; float:right;">
                 
                 <h2 id="message-title">---</h2>
-                <h3 id="message-subtitle" style="margin: 0 0 15px 0;">---</h3>
-
                 <p id="message-message">---</p>
 
                 <button id="message-positive-btn" class="btn btn-input" type="button" style="margin-top:10px;"
-                        onclick="editors.messagePositiveAction();">OK</button>
+                        onclick="WIM.EDITOR.messagePositiveAction()">OK</button>
                 <button id="message-negative-btn" class="btn btn-input" type="button" style="background-color:#333 !important; margin-top:5px;"
-                        onclick="editors.messageNegativeAction();">Abbrechen</button>
+                        onclick="WIM.EDITOR.messageNegativeAction()">Abbrechen</button>
             </form>
         </div>
     </div>
@@ -847,31 +860,30 @@ if (!($entriesManager->isReady &&
 
 <script type="text/javascript"><?php
 
-    // WimFirstAccess: Zum Passwort-Ändern auffordern
-    if ($_SESSION['WimFirstAccess'] && !isset($_SESSION['WimFirstAccessNagged'])) {
+    // IsFirstAccess: Zum Passwort-Ändern auffordern
+    if (isset($_SESSION['IsFirstAccess']) && $_SESSION['IsFirstAccess'] && !isset($_SESSION['WimFirstAccessNagged'])) {
 
-        echo "editors.messageOpen('Neues Passwort?', null, 'Dein Passwort wurde zurückgesetzt. Bitte ändere dein Passwort so bald wie möglich.', false, 'yes-no', function() {editors.editorAccountCreate();}, null, false);";
+        echo "WIM.EDITOR.showMessage({
+            title: 'Neues Passwort?',
+            description: 'Dein Passwort wurde zurückgesetzt. Bitte ändere dein Passwort so bald wie möglich.',
+            showWarning: false,
+            mode: 'yes-no',
+            actionPositive: () => { WIM.EDITOR.accountEditor.create() },
+            actionNegative: null,
+        });";
         $_SESSION['WimFirstAccessNagged'] = true;
 
     }
 
     // Dialog ausführen
-    if (isset($_GET['message']) && (isset($_SESSION['messageArgsTitle']) || isset($_SESSION['messageArgsSubtitle']) || isset($_SESSION['messageArgsBody']))) {
+    if (isset($_GET['msg']) && isset($_SESSION['MESSAGEDATA']))
+    {
+        // inject message-code
+        echo("WIM.EDITOR.showMessage({$_SESSION['MESSAGEDATA']});");
 
-        $title = isset($_SESSION['messageArgsTitle']) ? $_SESSION['messageArgsTitle'] : 'Wichtiger Hinweis';
-        $subtitle = isset($_SESSION['messageArgsSubtitle']) ? $_SESSION['messageArgsSubtitle'] : '';
-        $body = isset($_SESSION['messageArgsBody']) ? $_SESSION['messageArgsBody'] : '';
-        
-        $warnMode = ($_GET['message'] === 'warn') ? 'true' : 'false';
-        if ($warnMode === 'true' && $body === '') { $body = "Bei der Bearbeitung ist ein Serverfehler aufgetreten. > IT-Verantw. kontaktieren."; }
-        
-        $_SESSION['messageArgsTitle'] = null;
-        $_SESSION['messageArgsSubtitle'] = null;
-        $_SESSION['messageArgsBody'] = null;
-
-        // Meldung verarbeiten
-        echo "editors.messageOpen('$title', '$subtitle', '$body', $warnMode, 'ok-only', null, null, false);";
-
+        // removes msg-GET
+        echo("let baseUrl = window.location.href.split('?')[0];");
+        echo("window.history.pushState(null, '', baseUrl);");
     }
 
 ?></script>

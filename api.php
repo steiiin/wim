@@ -1,548 +1,907 @@
 <?php
 
-require_once 'php-auth.php';
-require_once 'php-db.php';
+namespace WIM;
 
-###################################################################################################
+// files ##########################################################################################
+require_once dirname(__FILE__) . '/db-settings.php';
+require_once dirname(__FILE__) . '/db-entries.php';
+require_once dirname(__FILE__) . '/db-users.php';
+require_once dirname(__FILE__) . '/db-auth.php';
 
-$paramAction = filter_input(INPUT_GET, 'action', FILTER_SANITIZE_STRING);
-if ($paramAction == false) {giveErrorBadRequest();}
+$paramAction = filter_input(INPUT_GET, 'action', FILTER_SANITIZE_STRING) ?? false;
+if ($paramAction == false) { Auth::replyErrorBadRequest(); }
 
-###################################################################################################
-# Account bearbeiten
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// UI-ENDPOINT */
 
-switch ($paramAction) {
-    case 'ACCOUNT-LOGOUT':
-        session_destroy();
-        redirectToLogin();
-        break;
+    switch ($paramAction)
+    {
+        case 'GET-UI':
 
-    case 'ACCOUNT-CHANGEUSER':
-        ThrowInvalidSession();
-        
-        $NewLoginUser = filter_input(INPUT_POST, 'user', FILTER_SANITIZE_STRING);
+            // get parameters
+            $requestType = filter_input(INPUT_GET, "type", FILTER_SANITIZE_STRING) ?? false;
+            if ($requestType == false) { Auth::replyErrorBadRequest(); }
+            if (!RequestType::IsValidType($requestType)) { Auth::replyErrorBadRequest(); }
 
-        $usersManager = new UsersManager();
-        if ($usersManager->isReady && ($NewLoginUser !== false)) {
-            if ($usersManager->ChangeLoginUser($NewLoginUser) !== false) {
-                session_destroy();
-                redirectToLogin();
-            } else {
-                redirectToAdminWithArgs(null, "error=1&msg=" . urlencode("Die Benutzerkennung existiert bereits."));
+            // get entries
+            $entries = (new Entries())->LoadEntries($requestType);
+            if ($entries === false) { Auth::replyErrorServer(); }
+
+            // filter output
+            $hidden = [];
+            if ($requestType == RequestType::ADMIN_RECURRING_SEARCH || !RequestType::IsAdminViewType($requestType))
+            {
+                $today = date('Y-m-d');
+                $wholeHidden = (new Settings())->GetHiddenEntries(); 
+                if (isset($wholeHidden[$today]) && count($wholeHidden[$today]) > 0) {
+                    $hidden = $wholeHidden[$today];
+                } 
             }
-        }
-        break;
 
-    case 'ACCOUNT-CHANGEPASS':
-        ThrowInvalidSession();
+            // output HTML
+            die($html = UserInterface::GenerateHtmlOfEntriesList($entries, $requestType, $hidden));
+            break;
 
-        $OldLoginPass = filter_input(INPUT_POST, 'oldpass', FILTER_SANITIZE_STRING);
-        $NewLoginPass = filter_input(INPUT_POST, 'newpass', FILTER_SANITIZE_STRING);
+        case 'SEARCH-UI':
 
-        $usersManager = new UsersManager();
-        if ($usersManager->isReady && ($OldLoginPass !== false) && ($NewLoginPass !== false)) {
+            // get parameters
+            $requestDate = filter_input(INPUT_GET, "date", FILTER_SANITIZE_STRING) ?? false;
+            if ($requestDate == false) { Auth::replyErrorBadRequest(); }
+            if (!Validation::IsDateValid($requestDate)) { Auth::replyErrorBadRequest(); }
+            $requestDate = \DateTime::createFromFormat('Y-m-d', $requestDate);
+            if ($requestDate === false) { Auth::replyErrorBadRequest(); }
 
-            if ($usersManager->LoginUser($_SESSION['LoginUser'], $OldLoginPass) && $usersManager->SelectCurrentUser()) {
+            $formatedDate = ($requestDate->format('Y-m-d')).' 00:00:00';
+            $requestedWeekday = $requestDate->format("w");
+            $requestedDoM = $requestDate->format("j");
+            $requestedLWeekOM = (new \DateTime('last day of this month'))->modify('-6 days')->format("Y-m-d 00:00:00");
+            $isRequestedLastDoM = ($requestDate->format("t") == $requestedDoM) ? 1 : 0;
 
-                if ($usersManager->ChangePass($NewLoginPass, false)) {
+            // get entries
+            $where = "`TYPETAG` = '".TypeTag::RECURRING."' AND 
+            (
+                (`CYCL_TYPE` = 0) OR 
+                (`CYCL_TYPE` = 1 AND `CYCL_WEEKDAY` = $requestedWeekday) OR 
+                (`CYCL_TYPE` = 2 AND `CYCL_DOM` = $requestedDoM) OR 
+                (`CYCL_TYPE` = 3 AND 1 = $isRequestedLastDoM) OR 
+                (`CYCL_TYPE` = 4 AND '$formatedDate' >= '$requestedLWeekOM' AND `CYCL_WEEKDAY` = $requestedWeekday)
+            )
+            ORDER BY `DATEEND` ASC, `PAYLOAD` ASC";
+            $entries = (new Entries())->LoadCustom($where);
+            if ($entries === false) { Auth::replyErrorServer(); }
+
+            // get hidden
+            $hidden = [];
+            $today = date('Y-m-d');
+            $wholeHidden = (new Settings())->GetHiddenEntries(); 
+            if (isset($wholeHidden[$today]) && count($wholeHidden[$today]) > 0) {
+                $hidden = $wholeHidden[$today];
+            } 
+
+            // output HTML
+            die($html = UserInterface::GenerateHtmlOfEntriesList($entries, RequestType::ADMIN_RECURRING_SEARCH, $hidden));
+            break;
+    
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// ACCOUNT-ENDPOINT */
+
+    switch ($paramAction)
+    {
+        case 'ACCOUNT-HEARTBEAT':
+            if (Auth::checkSession()) { Auth::replySuccess(); }
+            else { Auth::replyErrorUnauthorized(); }
+
+        case 'ACCOUNT-LOGOUT': 
+            session_destroy();
+            Auth::redirectToLogin();
+            break;
+
+        case 'ACCOUNT-CHANGEUSER': 
+            Auth::blockInvalidSession();
+
+            // get parameters
+            $newName = \filter_input(INPUT_POST, 'user', FILTER_SANITIZE_STRING);
+            if ($newName == false) { Auth::replyErrorBadRequest(); }
+
+            // add username, or give error
+            $users = new Users();
+            if ($users->ChangeName($newName))
+            {
+                session_destroy();
+                Auth::redirectToLogin();
+            }
+            else
+            {
+                Auth::redirectToAdminWithMessage("{
+                    title: 'Doppelte Kennung',
+                    description: 'Die Benutzerkennung existiert bereits. Bitte wähle eine andere.',
+                    showWarning: true,
+                    mode: 'ok',
+                    actionPositive: null
+                }", 'account');
+            }
+            break;
+            
+        case 'ACCOUNT-CHANGEPASS':
+            Auth::blockInvalidSession();
+
+            // get parameters
+            $oldPass = filter_input(INPUT_POST, 'oldpass', FILTER_SANITIZE_STRING);
+            $newPass = filter_input(INPUT_POST, 'newpass', FILTER_SANITIZE_STRING);
+            if ($oldPass == false) { Auth::replyErrorBadRequest(); }
+            if ($newPass == false) { Auth::replyErrorBadRequest(); }
+
+            // update password, if old pass matching, otherwise give error
+            $users = new Users();
+            if ($users->LoginUser($_SESSION['User'], $oldPass))
+            {
+
+                if ($users->ChangePass($newPass))
+                {
                     session_destroy();
-                    redirectToLogin();
+                    Auth::redirectToLogin();
+                }
+                
+                // on Error
+                Auth::redirectToAdminWithMessage("{
+                    title: \"Fehler bei der Passwortänderung (@{$_SESSION['User']})\",
+                    description: 'Die Änderung konnte leider nicht übernommen werden. Informiere den Standortverantwortlichen, wenn der Fehler weiter bestehen bleibt.',
+                    showWarning: true,
+                    mode: 'ok',
+                    actionPositive: null
+                }", 'account');
+
+            }
+
+            // on Error
+            Auth::redirectToAdminWithMessage("{
+                title: \"Falsches Passwort (@{$_SESSION['User']})\",
+                description: 'Das eingegebene Passwort stimmt nicht. Bitte überprüfe deine Eingabe und probiere es nochmal.',
+                showWarning: true,
+                mode: 'ok',
+                actionPositive: null
+            }", 'account');
+            break;
+
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// USER-ENDPOINT */
+
+    switch ($paramAction)
+    {
+        case 'USER-EDIT': 
+            Auth::blockInvalidSession();
+            Auth::blockNoAdminSession();
+
+            // get parameters
+            $userId = filter_input(INPUT_POST, 'id', FILTER_SANITIZE_NUMBER_INT); 
+            $userName = strtolower(filter_input(INPUT_POST, 'loginuser', FILTER_SANITIZE_STRING));
+            $isAdmin = (filter_input(INPUT_POST, 'wimadmin', FILTER_SANITIZE_STRING) === "on");
+
+            // check parameters
+            if ($userId === false || $userName === false) { Auth::replyErrorBadRequest(); }
+            $userId = (int)$userId;
+
+            // block forbidden usernames
+            if ($userName == 'admin')
+            {
+                Auth::redirectToAdminWithMessage("{
+                    title: 'Reservierter Nutzer (@admin)',
+                    description: 'Der Nutzer wurde nicht erstellt. Die Kennung >admin< ist reserviert. Benutze eine andere Kennung.',
+                    showWarning: true,
+                    mode: 'ok',
+                    actionPositive: null
+                }", 'users');
+            }
+
+            // create new user, or edit existing
+            $users = new Users();
+            if ($userId === -1)
+            {
+
+                $userId = $users->AddUser($userName, $isAdmin);
+                if ($userId === false) { Auth::replyErrorBadRequest(); }
+
+                // reset new password & show dialog
+                $tmpPassword = $users->ResetPass($userId);
+                if ($tmpPassword === false) 
+                { 
+                    // user created, but passwort could not be resetted
+                    Auth::redirectToAdminWithMessage("{
+                        title: 'Neuer Benutzer erstellt (@$userName)',
+                        description: 'Der Nutzer wurde erstellt. <br>Setze das Kennwort bitte manuell zurück, damit sich der Nutzer anmelden kann zukünftig.',
+                        showWarning: true,
+                        mode: 'ok',
+                        actionPositive: () => { WIM.EDITOR.userEditor.edit($userId, '$userName', ".($isAdmin ? 'true' : 'false').") }
+                    }", 'users');
+                }
+
+                // successful created user
+                Auth::redirectToAdminWithMessage("{
+                    title: 'Neuer Benutzer erstellt (@$userName)',
+                    description: 'Der Nutzer wurde erstellt. <br>Gib dem Nutzer sein temporäres Passwort: <br><br>$tmpPassword<br><br>Damit kann er sich anmelden.',
+                    showWarning: false,
+                    mode: 'ok',
+                    actionPositive: null
+                }", 'users');
+
+            }
+            else
+            {
+                if ($users->ChangeName($userName, $userId) &&
+                    $users->ChangeIsAdmin($isAdmin, $userId))
+                {
+                    Auth::redirectToAdminWithArgs("entries-users-anchor", "");
+                }
+                else
+                {
+                    // on Error
+                    Auth::redirectToAdminWithMessage("{
+                        title: 'Benutzer konnte nicht bearbeitet werden (@$userName)'',
+                        description: 'Beim Ändern der Benutzerdaten ist ein Fehler aufgetreten. Probiere es später nochmal oder benachrichte den Standortverantwortlichen, sollte der Fehler weiterhin bestehen.',
+                        showWarning: true,
+                        mode: 'ok',
+                        actionPositive: null
+                    }", 'users');
+                }
+            }
+            break;
+
+        case 'USER-PASSRESET':
+            Auth::blockInvalidSession();
+            Auth::blockNoAdminSession();
+
+            // get parameters
+            $userId = filter_input(INPUT_POST, 'id', FILTER_SANITIZE_NUMBER_INT); 
+            $userName = filter_input(INPUT_POST, 'loginuser', FILTER_SANITIZE_STRING);
+            if ($userId === false || $userName === false) { Auth::replyErrorBadRequest(); }
+            $userId = (int)$userId;
+
+            // reset pass
+            $users = new Users();
+            $newPass = $users->ResetPass($userId);
+            if ($newPass !== false) 
+            { 
+                
+                // successfully resetted password
+                Auth::redirectToAdminWithMessage("{
+                    title: 'Passwort zurückgesetzt (@$userName)',
+                    description: 'Das Passwort wurde zurückgesetzt. <br>Gib dem Nutzer sein temporäres Passwort: <br><br>$newPass<br><br>Damit kann er sich anmelden.',
+                    showWarning: false,
+                    mode: 'ok',
+                    actionPositive: null
+                }", 'users');
+
+            }
+
+            // on Error
+            Auth::redirectToAdminWithMessage("{
+                title: 'Benutzer konnte nicht bearbeitet werden (@$userName)'',
+                description: 'Beim Zurücksetzen des Passwortes ist ein Fehler aufgetreten. Probiere es später nochmal oder benachrichte den Standortverantwortlichen, sollte der Fehler weiterhin bestehen.',
+                showWarning: true,
+                mode: 'ok',
+                actionPositive: null
+            }", 'users');
+            break;
+
+        case 'USER-DELETE':
+            Auth::blockInvalidSession();
+            Auth::blockNoAdminSession();
+
+            // get parameters
+            $userId = filter_input(INPUT_POST, 'id', FILTER_SANITIZE_NUMBER_INT); 
+            if ($userId === false) { Auth::replyErrorBadRequest(); }
+
+            // delete user
+            $users = new Users();
+            if ($users->DeleteUser($userId))
+            {
+                Auth::redirectToAdminWithMessage("{
+                    title: 'Benutzer wurde gelöscht',
+                    description: 'Der Benutzer wurde entfernt. Die dem Nutzer zugeordneten Einträge bleiben bestehen, bis du diese manuell löschst.',
+                    showWarning: false,
+                    mode: 'ok',
+                    actionPositive: null
+                }", 'users');
+            }
+            else
+            {
+                // on Error
+                Auth::redirectToAdminWithMessage("{
+                    title: 'Benutzer konnte nicht gelöscht werden (@$userName)'',
+                    description: 'Beim Löschen des Benutzers ist ein Fehler aufgetreten. Probiere es später nochmal oder benachrichte den Standortverantwortlichen, sollte der Fehler weiterhin bestehen.',
+                    showWarning: true,
+                    mode: 'ok',
+                    actionPositive: null
+                }", 'users');
+            }
+            break;
+
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// CRONJOB-ENDPOINT */
+
+    switch ($paramAction)
+    {
+        case 'CRON-MODULE':
+            
+            $module = filter_input(INPUT_GET, 'm', FILTER_SANITIZE_STRING);
+            switch ($module)
+            {
+                case 'ABFALL':
+
+                    require_once dirname(__FILE__) . '/cron-auto-abfall.php';
+                    $users = new Users();
+                    $entries = new Entries();
+                    $settings = new Settings();
+                    $module = new ModuleAbfall($users, $entries, $settings);
+                    $module->run();
+                    break;
+
+                case 'MALTESER':
+
+                    require_once dirname(__FILE__) . '/cron-auto-maltesercloud.php';
+                    $users = new Users();
+                    $entries = new Entries();
+                    $settings = new Settings();
+                    $module = new ModuleMalteser($users, $entries, $settings);
+                    $module->run();
+                    break;
+
+                default:
+                    Auth::replyErrorBadRequest();
+            }
+
+
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// SETTINGS-ENDPOINT */
+
+    switch ($paramAction) {
+        case 'SETTINGS-WIM':
+            Auth::blockInvalidSession();
+            Auth::blockNoAdminSession();
+
+            $module = filter_input(INPUT_GET, 'm', FILTER_SANITIZE_STRING);
+            switch ($module)
+            {
+                case 'UI':
+
+                    $stationName = filter_input(INPUT_POST, 'wachename', FILTER_SANITIZE_STRING);
+                    $uiRes = filter_input(INPUT_POST, 'ui-res', FILTER_SANITIZE_STRING);
+                    $stationLoc = filter_input(INPUT_POST, 'wacheloc', FILTER_UNSAFE_RAW);
+
+                    // prepare connectors
+                    $settings = new Settings();
+                    $beforeName = $settings->Get(Settings::UiStationName);
+                    $beforeRes = $settings->Get(Settings::UiResolution);
+                    $beforeLoc = $settings->Get(Settings::UiLocation);
+
+                    if (!$settings->Set(Settings::UiStationName, $stationName) ||
+                        !$settings->Set(Settings::UiResolution, $uiRes) ||
+                        !$settings->Set(Settings::UiLocation, $stationLoc))
+                    {
+                        Auth::redirectToAdminWithMessage("{
+                            title: 'Fehler beim Speichern',
+                            description: 'Die Einstellungen konnten nicht gespeichert werden. Waren z.B. komische Zeichen im Wachennamen?',
+                            showWarning: true,
+                            mode: 'ok',
+                            actionPositive: null
+                        }", 'settings');
+                    }
+
+                    if ($beforeName != $stationName ||
+                        $beforeRes != $uiRes ||
+                        $beforeLoc != $stationLoc)
+                    {
+                        Auth::redirectToAdminWithMessage("{
+                            title: 'Neustart erforderlich',
+                            description: 'Um die Einstellungen zu übernehmen, muss das WIM neugestartet werden. Aus Sicherheitsgründen funktioniert das aber nicht von der Admin-Oberfläche aus. <br><br>Zieh am Besten kurz den Stecker 😁',
+                            showWarning: false,
+                            mode: 'ok',
+                            actionPositive: null
+                        }", 'module');
+                    }
+                    else
+                    {
+                        Auth::redirectToAdmin('settings');
+                    }
+
+                    break;
+                case 'TIMING':
+
+                    $timing = filter_input(INPUT_POST, 'vehicleTiming', FILTER_UNSAFE_RAW);
+
+                    $settings = new Settings();
+                    if (!$settings->Set(Settings::UiVehicleTiming, $timing))
+                    {
+                        Auth::redirectToAdminWithMessage("{
+                            title: 'Fehler beim Speichern',
+                            description: 'Die Einstellungen konnten nicht gespeichert werden. Waren die Fahrzeugzeiten richtig formatiert?',
+                            showWarning: true,
+                            mode: 'ok',
+                            actionPositive: null
+                        }", 'settings');
+                    }
+                    Auth::redirectToAdmin('settings');
+
+                    break;
+            }
+            break;
+        
+        case 'SETTINGS-MODULE':
+            Auth::blockInvalidSession();
+            Auth::blockNoAdminSession();
+
+            $module = filter_input(INPUT_GET, 'm', FILTER_SANITIZE_STRING);
+            switch ($module)
+            {
+                case 'ABFALL':
+
+                    // get parameter
+                    $link = filter_input(INPUT_POST, 'auto-abfalllink', FILTER_SANITIZE_STRING);
+
+                    // prepare connectors
+                    $settings = new Settings();
+                    $beforeChange = $settings->Get(ModuleAbfall::Link);
+
+                    // save parameter
+                    if ($link === false || preg_match('/^https:\/\/www\.zaoe\.de\/kalender\/ical\/([0-9\/\-_]+)$/', $link) !== 1 || !$settings->Set(ModuleAbfall::Link, $link, true)) 
+                    { 
+                        Auth::redirectToAdminWithMessage("{
+                            title: 'Fehler beim Speichern',
+                            description: 'Der Abfalllink konnte nicht gespeichert werden. Ist er im richtigen Format?',
+                            showWarning: true,
+                            mode: 'ok',
+                            actionPositive: null
+                        }", 'module');
+                    }
+                    
+                    // update if changed
+                    if ($beforeChange != $link)
+                    {
+                        $entries = new Entries();
+                        $module = new ModuleAbfall(null, $entries, $settings);
+                        if (!$module->run(false))
+                        {
+                            Auth::redirectToAdminWithMessage("{
+                                title: 'Fehler beim Abruf',
+                                description: 'Der Abfallkalender konnte von diesem Link nicht hinzugefügt werden. Ist es der richtige?',
+                                showWarning: true,
+                                mode: 'ok',
+                                actionPositive: null
+                            }", 'module');
+                        }
+                    }
+                    Auth::redirectToAdmin('modules');
+                    break;
+
+                case 'MALTESER':
+                    $tool = filter_input(INPUT_GET, 'a', FILTER_SANITIZE_STRING);
+                    $update = false;
+
+                    switch ($tool)
+                    {
+                        case 'ENDPOINT':
+
+                            // get parameter
+                            $endpoint = filter_input(INPUT_POST, 'auto-malteser-endpoint', FILTER_SANITIZE_STRING);
+
+                            // prepare connectors
+                            $settings = new Settings();
+                            $beforeChange = $settings->Get(ModuleMalteser::EndPoint);
+
+                            // save parameter
+                            if ($endpoint === false || !$settings->Set(ModuleMalteser::EndPoint, $endpoint, true)) 
+                            { 
+                                Auth::redirectToAdminWithMessage("{
+                                    title: 'Fehler beim Speichern',
+                                    description: 'Der Endpunkt-Link konnte nicht gespeichert werden. Ist er im richtigen Format?',
+                                    showWarning: true,
+                                    mode: 'ok',
+                                    actionPositive: null
+                                }", 'module');
+                            }
+
+                            $update = $beforeChange != $endpoint;
+                            break;
+
+                        case 'CREDENTIALS':
+
+                            // get parameter
+                            $username = filter_input(INPUT_POST, 'auto-malteser-user', FILTER_SANITIZE_STRING);
+                            $password = filter_input(INPUT_POST, 'auto-malteser-pass', FILTER_SANITIZE_STRING);
+
+                            // prepare connectors
+                            $settings = new Settings();
+                            $beforeUser = $settings->Get(ModuleMalteser::Username);
+                            $beforePass = $settings->Get(ModuleMalteser::Password);
+
+                            // save parameter
+                            if ($username === false || $password === false || 
+                                !$settings->Set(ModuleMalteser::Username, $username, true) ||
+                                !$settings->Set(ModuleMalteser::Password, $password, true)) 
+                            { 
+                                Auth::redirectToAdminWithMessage("{
+                                    title: 'Fehler beim Speichern',
+                                    description: 'Die Zugangsdaten konnten nicht gespeichert werden. Sind sie im richtigen Format?',
+                                    showWarning: true,
+                                    mode: 'ok',
+                                    actionPositive: null
+                                }", 'module');
+                            }
+
+                            $update = $beforeUser != $username || $beforePass != $password;
+                            break;
+
+                        default:
+                            Auth::replyErrorBadRequest();
+                    }
+
+                    // update if changed
+                    if ($update)
+                    {
+                        $entries = new Entries();
+                        $module = new ModuleMalteser(null, $entries, $settings);
+                        if (!$module->run(false))
+                        {
+                            Auth::redirectToAdminWithMessage("{
+                                title: 'Fehler beim Abruf',
+                                description: 'Der Malteserkalender konnte nicht abgerufen werden. Ist der Link der Richtige und die Zugangsdaten korrekt?',
+                                showWarning: true,
+                                mode: 'ok',
+                                actionPositive: null
+                            }", 'module');
+                        }
+                    }
+                    Auth::redirectToAdmin('modules');
+                    break;
+
+                default:
+                    Auth::replyErrorBadRequest();
+            }
+            break;
+
+
+        case 'WIM-EXPORT':
+
+            try
+            {
+
+                $entries = new Entries();
+                $settings = new Settings();
+                $users = new Users();
+                $exportEntries = $entries->LoadExport();
+                $exportSettings = $settings->LoadExport();
+                $exportUsers = $users->LoadExport();
+                if ($exportEntries !== false &&
+                    $exportSettings !== false &&
+                    $exportUsers !== false)
+                {
+
+                    $export = [];
+                    $export['entries'] = $exportEntries;
+                    $export['settings'] = $exportSettings;
+                    $export['users'] = $exportUsers;
+                    $exportJson = \json_encode($export);
+
+                    if ($exportJson !== false)
+                    {
+                        header('Content-Type: application/json');
+                        die($exportJson);
+                    }
+                    
                 }
 
             }
+            catch (\Throwable $e)
+            { }
+            Auth::replyErrorServer();
+            break;
+        
+        case 'WIM-IMPORT':
+        
+            $reasonMsg = 'Fehler im WIM';
+            try
+            {
 
-            $_SESSION['messageArgsTitle'] = "Falsches Passwort";
-            $_SESSION['messageArgsSubtitle'] = "@$_SESSION[LoginUser]";
-            $_SESSION['messageArgsBody'] = "Das eingegebene Passwort stimmt nicht. Bitte überprüfe deine Eingabe und probiere es nochmal.";
-            redirectToAdminWithArgs(null, "message=error");
-
-        }
-        break;
-
-}
-
-###################################################################################################
-# User bearbeiten
-
-switch ($paramAction) {
-    case 'USER-EDIT':
-
-        ThrowInvalidSession();
-        ThrowNoAdminSession();
-
-        $UserID = filter_input(INPUT_POST, 'id', FILTER_SANITIZE_NUMBER_INT); 
-        $LoginUser = strtolower(filter_input(INPUT_POST, 'loginuser', FILTER_SANITIZE_STRING));
-        $FullName = filter_input(INPUT_POST, 'fullname', FILTER_SANITIZE_STRING);
-        $IsWimAdmin = (filter_input(INPUT_POST, 'wimadmin', FILTER_SANITIZE_STRING) === "on");
-
-        // Wenn POST unvollständig > Abbruch
-        if ($UserID === false || $UserID === "" || $LoginUser === false || $FullName === false) {
-            giveErrorBadRequest(); }
-
-        $UserID = (int)$UserID;
-
-        // Wenn Nutzer @admin > Abbruch, weil reserviert
-        if ($LoginUser == "admin") {
-
-            $_SESSION['messageArgsTitle'] = "Reservierter Nutzer";
-            $_SESSION['messageArgsSubtitle'] = "@admin";
-            $_SESSION['messageArgsBody'] = "Der Nutzer wurde nicht erstellt. Die Kennung >admin< ist reserviert. Benutze eine andere Kennung.";
-            redirectToAdminWithArgs("entries-users-anchor", "message=error"); }
-
-        // User bearbeiten
-        $usersManager = new UsersManager();
-        if ($usersManager->isReady) {
-
-            if ($UserID === -1) {
-
-                // Neuen Nutzer erstellen & Auswählen
-                $rtn = $usersManager->AddUser($LoginUser, $FullName, $IsWimAdmin);
-                if ($rtn !== false && $usersManager->SelectUser($rtn)) 
+                // check fileupload is ok
+                if (isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) 
                 {
-                    $tmpPass = $usersManager->ResetPass();
-                    if ($tmpPass !== false) {
+                    
+                    // check if only one file is uploaded
+                    if (!is_array($_FILES['file']['tmp_name'])) 
+                    {
+                        
+                        $fileType = $_FILES['file']['type'];
+                        $fileName = $_FILES['file']['name'];
+                        $fileExtension = pathinfo($fileName, PATHINFO_EXTENSION);
+                
+                        // Verify file type as JSON
+                        if ($fileType === 'application/json' && $fileExtension === 'json') 
+                        {
+                            
+                            $filepath = $_FILES['file']['tmp_name'];
+                            $content = \file_get_contents($filepath);
+                            if ($content  !== false)
+                            {
 
-                        $_SESSION['messageArgsTitle'] = "Neuer Nutzer";
-                        $_SESSION['messageArgsSubtitle'] = "@$LoginUser";
-                        $_SESSION['messageArgsBody'] = "Der neue Benutzer wurde erstellt. Damit sich dieser anmelden kann, benötigt er ein Kennwort. Gib bitte folgende Zugangsdaten weiter: <br><br> Nutzername: $LoginUser <br> Passwort: <code>$tmpPass</code><br><a class=\"btn btn-small\" href=\"mailto:?subject=WIM [Neue Zugangsdaten]&body=".rawurlencode("Dein WIM-Zugang wurde zurückgesetzt: \n \n Nutzername: \t $LoginUser \n Passwort: \t $tmpPass")."\">Per E-Mail weiterleiten</a>";
-                        redirectToAdminWithArgs("entries-users-anchor", "message=info");
+                                $jsondata = \json_decode ($content, true);
 
+                                $entries = new Entries();
+                                $settings = new Settings();
+                                $users = new Users();
+                                
+                                // import
+                                if ($entries->LoadImport($jsondata['entries']) &&
+                                    $settings->LoadImport($jsondata['settings']) &&
+                                    $users->LoadImport($jsondata['users']))
+                                {
+
+                                    Auth::redirectToAdminWithMessage("{
+                                        title: 'Neustart empfohlen',
+                                        description: 'Um die Einstellungen zu übernehmen, sollte das WIM neugestartet werden (Je nachdem, welche Daten importiert wurden). Aus Sicherheitsgründen funktioniert das aber nicht von der Admin-Oberfläche aus. <br><br>Zieh am Besten kurz den Stecker 😁',
+                                        showWarning: false,
+                                        mode: 'ok',
+                                        actionPositive: null
+                                    }", 'settings');
+
+                                } else {
+                                    $reasonMsg = 'Abbruch beim Import / Daten unvollständig';
+                                }
+                                
+
+                            } else {
+                                $reasonMsg = 'Datei nicht lesbar';
+                            }
+
+                        } else {
+                            $reasonMsg = 'Keine JSON-Datei';
+                        }
+                    } else {
+                        $reasonMsg = 'Mehrere Dateien hochgeladen';
                     }
                 } else {
-
-                    $_SESSION['messageArgsTitle'] = "Fehler";
-                    $_SESSION['messageArgsSubtitle'] = "@$LoginUser";
-                    $_SESSION['messageArgsBody'] = "Der Nutzer <strong>@$LoginUser</strong> konnte nicht erstellt werden. Vermutlich existiert dieser schon. Benutze einen anderen Benutzernamen.";
-                    redirectToAdminWithArgs("entries-users-anchor", "message=error");
-
-                }
-
-            } else {
-
-                // Bestehenden Nutzer auswählen & aktualisieren
-                if ($usersManager->SelectUser($UserID) &&
-                    $usersManager->ChangeUserInfo($LoginUser, $FullName, $IsWimAdmin)) {
-
-                    redirectToAdminWithArgs("entries-users-anchor", null);
+                    $reasonMsg = 'Fehler beim Upload';
                 }
 
             }
+            catch (\Throwable $e) {  }
 
-        } 
-        
-        redirectToAdminWithArgs("entries-users-anchor", "message=error");
+            Auth::redirectToAdminWithMessage("{
+                title: 'Fehler beim Import',
+                description: 'Etwas ist schiefgelaufen: ($reasonMsg). War es die richtige Datei?',
+                showWarning: true,
+                mode: 'ok',
+                actionPositive: null
+            }", 'settings');
 
-        break;
+            break;
+    }
 
-    case 'USER-PASSRESET':
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// ITEM-EDIT-ENDPOINT
 
-        ThrowInvalidSession();
-        ThrowNoAdminSession();
+    switch ($paramAction) {
+        case 'ITEM-DELETE':
+            Auth::blockInvalidSession();
 
-        $UserID = filter_input(INPUT_POST, 'id', FILTER_SANITIZE_NUMBER_INT); 
-        $LoginUser = filter_input(INPUT_POST, 'loginuser', FILTER_SANITIZE_STRING);
-        if ($UserID === false || $LoginUser === false || $UserID == "") { giveErrorBadRequest(); }
-
-        // User bearbeiten
-        $usersManager = new UsersManager();
-        if ($usersManager->isReady) {
-
-            if ($usersManager->SelectUser($UserID)) {
-
-                $tmpPass = $usersManager->ResetPass();
-                if ($tmpPass !== false) {
-                   
-                    $_SESSION['messageArgsTitle'] = "Nutzer-Verwaltung";
-                    $_SESSION['messageArgsSubtitle'] = "@$LoginUser";
-                    $_SESSION['messageArgsBody'] = "Das Passwort wurde zurückgesetzt. Damit sich der Nutzer anmelden kann, benötigt er ein Kennwort. Gib bitte folgende Zugangsdaten weiter: <br><br> Nutzername: $LoginUser <br> Passwort: <code>$tmpPass</code><br>";
-                    redirectToAdminWithArgs("entries-users-anchor", "message=info");
-
-                }
-
-            }
-
-        } 
+            $itemId = filter_input(INPUT_POST, "id", FILTER_VALIDATE_INT);
+            $typeTag = filter_input(INPUT_POST, 'typetag', FILTER_SANITIZE_STRING);
+            $typeTag = $typeTag === false ? '' : strtolower($typeTag);
             
-        redirectToAdminWithArgs("entries-users-anchor", "message=error");
-
-        break;
-
-    case 'USER-DELETE':
-
-        ThrowInvalidSession();
-        ThrowNoAdminSession();
-
-        $UserID = filter_input(INPUT_POST, 'id', FILTER_SANITIZE_NUMBER_INT); 
-        if ($UserID === false || $UserID == "") { giveErrorBadRequest(); }
-
-        // User bearbeiten
-        $usersManager = new UsersManager();
-        if ($usersManager->isReady) {
-
-            if ($usersManager->SelectUser($UserID) && $usersManager->DeleteUser()) {
-
-                redirectToAdminWithArgs("entries-users-anchor", null);
+            if ($itemId !== null && $itemId !== false)
+            {
+                $entries = new Entries();
+                if ($entries->DeleteById($itemId))
+                {
+                    Auth::redirectToAdmin($typeTag);
+                }
             }
 
-        } 
-            
-        redirectToAdminWithArgs("entries-users-anchor", "message=error");
+            Auth::redirectToAdminWithMessage("{
+                title: 'Fehler beim Löschen',
+                description: 'Der Eintrag konnte nicht gelöscht werden. Frag bitte beim Standortverantwortlichen nach.',
+                showWarning: true,
+                mode: 'ok',
+                actionPositive: null
+            }", $typeTag);
+            break;
+            break;
 
-        break;
+        case 'ITEM-EDIT':
+            Auth::blockInvalidSession();
 
-}
+            // get item-info
+            $typeTag = filter_input(INPUT_POST, 'typetag', FILTER_SANITIZE_STRING);
+            $itemId = filter_input(INPUT_POST, "id", FILTER_VALIDATE_INT);
+            if ($itemId !== null && $itemId !== false && TypeTag::IsValidType($typeTag))
+            {
+                $itemId = (int)$itemId;
 
-###################################################################################################
-# META
+                switch ($typeTag)
+                {
+                    case TypeTag::INFO:
+                        
+                        $payload = filter_input(INPUT_POST, 'payload', FILTER_UNSAFE_RAW);
+                        $dateStart = filter_input(INPUT_POST, 'dateStart', FILTER_SANITIZE_STRING);
+                        $dateEnd = filter_input(INPUT_POST, 'dateEnd', FILTER_SANITIZE_STRING);
+                        if (Validation::IsPayloadValid($payload))
+                        {
 
-switch ($paramAction) {
-    case 'SETTINGS':
+                            $withDate = Validation::IsDateValid($dateStart) && Validation::IsDateValid($dateEnd);
+                            if ($itemId == -1) { $itemId = false; }
 
-        ThrowInvalidSession();
-        ThrowNoAdminSession();
+                            $entries = new Entries();
+                            if ($entries->EditInfo($itemId, $payload, $withDate, $dateStart, $dateEnd))
+                            {
+                                Auth::redirectToAdmin('info');
+                            }
 
-        $WacheName = filter_input(INPUT_POST, 'wachename', FILTER_SANITIZE_STRING);
-        $WacheUI = filter_input(INPUT_POST, 'ui', FILTER_SANITIZE_STRING);
-        $WacheKfz = urlencode(filter_input(INPUT_POST, 'wachekfz'));
-        
-        $defStart = filter_input(INPUT_POST, 'defTimingStart', FILTER_SANITIZE_STRING);
-        $defEnd = filter_input(INPUT_POST, 'defTimingEnd', FILTER_SANITIZE_STRING);
-        
-        $settings = new Settings();
-        if ($settings->isReady) { 
+                        }
+                        break;
 
-            $setMessage = null;
+                    case TypeTag::TASK:
 
-            $settings->SetWacheName($WacheName);
-            $settings->SetWacheKfz($WacheKfz);
+                        $payload = filter_input(INPUT_POST, 'payload', FILTER_UNSAFE_RAW);
+                        $dateStart = filter_input(INPUT_POST, 'dateStart', FILTER_SANITIZE_STRING);
+                        $dateEnd = filter_input(INPUT_POST, 'dateEnd', FILTER_SANITIZE_STRING);
+                        $timeStart = filter_input(INPUT_POST, 'timeStart', FILTER_SANITIZE_STRING);
+                        $timeEnd = filter_input(INPUT_POST, 'timeEnd', FILTER_SANITIZE_STRING);
+                        $showUpcoming = filter_input(INPUT_POST, 'showAsEvent', FILTER_SANITIZE_STRING) == 'on';
 
-            $settings->SetWacheDefTiming(urlencode("deftimingstart=\"{$defStart}\" deftimingend=\"{$defEnd}\""));
+                        if (Validation::IsPayloadValid($payload) && Validation::IsDateValid($dateEnd) && Validation::IsTimeValid($timeEnd))
+                        {
 
-            //Hinweis auf Neustart, wenn Auflösung geändert
-            $beforeWacheUI = $settings->GetWacheUiResolution();
-            $settings->SetWacheUiResolution($WacheUI);
-            if ($beforeWacheUI != $WacheUI) {
-                $setMessage = "message=info";
-                $_SESSION['messageArgsTitle'] = "Neustart erforderlich";
-                $_SESSION['messageArgsBody'] = "Für die Änderung der Auflösung muss die WIM-Box neugestartet werden. <br><br>Aus Sicherheitsgründen funktioniert dies aber nicht von der Admin-Oberfläche aus. <br><br>Am Besten ziehst du kurz den Stecker an der WIM-Box - dann wird die neue Oberfläche geladen. 😁";  
+                            if ($itemId == -1) { $itemId = false; }
+
+                            $entries = new Entries();
+                            if ($entries->EditTask($itemId, $payload, $dateStart, $dateEnd, $timeStart, $timeEnd, $showUpcoming))
+                            {
+                                Auth::redirectToAdmin('task');
+                            }
+
+                        }
+                        break;
+
+                    case TypeTag::EVENT:
+
+                        $payload = filter_input(INPUT_POST, 'payload', FILTER_UNSAFE_RAW);
+                        $dateStart = filter_input(INPUT_POST, 'dateStart', FILTER_SANITIZE_STRING);
+                        $dateEnd = filter_input(INPUT_POST, 'dateEnd', FILTER_SANITIZE_STRING);
+                        $timeStart = filter_input(INPUT_POST, 'timeStart', FILTER_SANITIZE_STRING);
+                        $timeEnd = filter_input(INPUT_POST, 'timeEnd', FILTER_SANITIZE_STRING);
+                        if (Validation::IsPayloadValid($payload) && Validation::IsDateValid($dateStart))
+                        {
+
+                            $withTime = Validation::IsTimeValid($timeStart) || Validation::IsTimeValid($timeEnd);
+                            if ($itemId == -1) { $itemId = false; }
+
+                            $entries = new Entries();
+                            if ($entries->EditEvent($itemId, $payload, $dateStart, $dateEnd, $timeStart, $timeEnd, $withTime, $withTime))
+                            {
+                                Auth::redirectToAdmin('task');
+                            }
+
+                        }
+                        break;
+
+                    case TypeTag::RECURRING:
+
+                        $payload = filter_input(INPUT_POST, 'payload', FILTER_UNSAFE_RAW);
+                        $timeStart = filter_input(INPUT_POST, 'timeStart', FILTER_SANITIZE_STRING);
+                        $timeEnd = filter_input(INPUT_POST, 'timeEnd', FILTER_SANITIZE_STRING);
+                        $cycleMode = filter_input(INPUT_POST, "cyclemode", FILTER_VALIDATE_INT);
+
+                        $weekday = filter_input(INPUT_POST, "weekday", FILTER_VALIDATE_INT);
+                        $dom = filter_input(INPUT_POST, "dayofmonth", FILTER_VALIDATE_INT);
+
+                        if (Validation::IsPayloadValid($payload) && Validation::IsTimeValid($timeStart) && Validation::IsTimeValid($timeEnd) && $cycleMode !== false &&
+                            ($cycleMode == 0 || ($cycleMode == 1 && $weekday !== null) || ($cycleMode == 2 && $dom !== null) || $cycleMode == 3 || ($cycleMode == 4 && $weekday !== null)))
+                        {
+                            if ($itemId == -1) { $itemId = false; }
+
+                            $entries = new Entries();
+                            if ($entries->EditRecurring($itemId, $payload, $timeStart, $timeEnd, $cycleMode, $weekday, $dom))
+                            {
+                                Auth::redirectToAdmin('recurring');
+                            }
+                            
+                        }
+                        break;
+
+                }
+
             }
 
-            redirectToAdminWithArgs("entries-users-anchor", $setMessage);
+            Auth::redirectToAdminWithMessage("{
+                title: 'Fehler beim Hinzufügen',
+                description: 'Der Eintrag konnte nicht hinzugefügt werden. Waren z.B. komische Zeichen in den Texten?',
+                showWarning: true,
+                mode: 'ok',
+                actionPositive: null
+            }", 'info');
+            break;
 
-        }
+        case 'HIDE-ITEM':
 
-        $_SESSION['messageArgsTitle'] = "Fehler";
-        $_SESSION['messageArgsBody'] = "Beim Speichern der Einstellungen ist ein Fehler aufgetreten. > WIM-Verantwortl. kontaktieren.";            
-        redirectToAdminWithArgs("entries-users-anchor", "message=error");
+            $hiddenId = filter_input(INPUT_POST, "hiddenid", FILTER_VALIDATE_INT);
+            $hiddenDate = filter_input(INPUT_POST, "hiddendate", FILTER_SANITIZE_STRING);
+            if ($hiddenId == true && Validation::IsDateValid($hiddenDate))
+            {
+                if ($itemId === -1) { $itemId = false; }
 
-        break;
+                // get hidden-list
+                $settings = new Settings();
+                $hidden = $settings->GetHiddenEntries();
 
-    case 'SETTINGS-MODULE-ABFALL':
+                // create if date not exists
+                if (!isset($hidden[$hiddenDate])) 
+                { $hidden[$hiddenDate] = []; }
 
-        ThrowInvalidSession();
-        ThrowNoAdminSession();
+                // create entry
+                if (in_array($hiddenId, $hidden[$hiddenDate]))
+                { 
+                    $toRemove = \array_search($hiddenId, $hidden[$hiddenDate]);
+                    \array_splice($hidden[$hiddenDate], $toRemove); }
+                else
+                { $hidden[$hiddenDate][] = $hiddenId; }
 
-        $AutoAbfallLink = filter_input(INPUT_POST, 'auto-abfalllink', FILTER_SANITIZE_STRING);
-
-        $settings = new Settings();
-        if ($settings->isReady) { 
-
-            // Abfallkalender aktualisieren, wenn Link geändert.
-            $beforeAutoAbfallLink = $settings->GetAutoAbfallLink();
-            if ($beforeAutoAbfallLink != $AutoAbfallLink) {
-                $settings->SetAutoAbfallLink($AutoAbfallLink); 
-                include 'cron-auto-abfall.php'; }
-
-            redirectToAdminWithArgs("entries-modules-anchor", null);
-
-        }
-
-        $_SESSION['messageArgsTitle'] = "Fehler";
-        $_SESSION['messageArgsBody'] = "Beim Speichern der Einstellungen ist ein Fehler aufgetreten. > WIM-Verantwortl. kontaktieren.";            
-        redirectToAdminWithArgs("entries-modules-anchor", "message=error");
-
-        break;
-
-    case 'SETTINGS-MODULE-MALTESER':
-
-        ThrowInvalidSession();
-        ThrowNoAdminSession();
-    
-        $AutoMalteserUser = filter_input(INPUT_POST, 'auto-malteseruser', FILTER_SANITIZE_STRING);
-        $AutoMalteserPass = filter_input(INPUT_POST, 'auto-malteserpass', FILTER_SANITIZE_STRING);
-    
-        $settings = new Settings();
-        if ($settings->isReady) { 
-    
-            // Zugangsdaten - Passwort nur ändern, wenn gesetzt
-            $settings->SetAutoMalteserUser($AutoMalteserUser);
-            if ($AutoMalteserPass !== "") { 
-                $settings->SetAutoMalteserPass($AutoMalteserPass);
-                include 'cron-auto-maltesercloud.php'; }
-    
-            redirectToAdminWithArgs("entries-modules-anchor", null);
-    
-        }
-    
-        $_SESSION['messageArgsTitle'] = "Fehler";
-        $_SESSION['messageArgsBody'] = "Beim Speichern der Einstellungen ist ein Fehler aufgetreten. > WIM-Verantwortl. kontaktieren.";            
-        redirectToAdminWithArgs("entries-modules-anchor", "message=error");
-    
-        break;
-
-    case 'GET-UI':
-
-        $requestType = filter_input(INPUT_GET, "type", FILTER_SANITIZE_STRING);
-        if ($requestType !== false) {
-
-            $entriesManager = new entriesManager();
-            if ($entriesManager->isReady) {
-                echo $entriesManager->GenerateHTML($requestType, false); die(); } }
-
-        break;
-
-    case 'ADMIN-SEARCH-CYCLEDTASK':
-
-        ThrowInvalidSession();
-
-        $requestDate = null;
-        if (isset($_GET["date"]) && strlen($_GET["date"]) > 0) {$requestDate = "$_GET[date]";}
-    
-        if ($requestDate !== null) {
-
-            $entriesManager = new entriesManager();
-            if ($entriesManager->isReady) {
-                echo $entriesManager->GenerateMetaSearchCycledTask($requestDate); die(); } }
-
-        break;
-    case 'ADMIN-GET-UI-SINGLEID':
-
-        ThrowInvalidSession();
-
-        $requestId = filter_input(INPUT_POST, "id", FILTER_VALIDATE_INT);
-        if ($requestId !== false) {
-
-            $entriesManager = new entriesManager();
-            if ($entriesManager->isReady) {
-                echo $entriesManager->GenerateHTMLSingle($requestId); die(); } }
-
-        break;
-
-}
-
-###################################################################################################
-# Einträge bearbeiten
-
-switch ($paramAction) {
-    case 'ITEM-EDIT':
-
-        ThrowInvalidSession();
-        
-        // Item abrufen
-        $typeTag = filter_input(INPUT_POST, 'typetag', FILTER_SANITIZE_STRING);
-        if ($typeTag === false) {giveErrorBadRequest();}
-
-        $ItemId = filter_input(INPUT_POST, "id", FILTER_VALIDATE_INT);
-        if ($ItemId == null || $ItemId === false) {giveErrorBadRequest();}
-    
-        // Je nach TypeTag
-        $entriesManager = new EntriesManager();
-        if (!$entriesManager->isReady) {giveErrorServer();}
-
-        switch ($typeTag) {
-            case TypeTag::INFO:
-
-                if (isset($_POST["title"]) &&
-                    isset($_POST["subtitle"])) {
-    
-                    $dateStart = null;
-                    $dateEnd = null;
-                    if (isset($_POST["dateStart"]) && strlen($_POST["dateStart"]) > 0) {$dateStart = "$_POST[dateStart] 00:00:00";}
-                    if (isset($_POST["dateEnd"]) && strlen($_POST["dateEnd"]) > 0) {$dateEnd = "$_POST[dateEnd] 23:59:59";}
-    
-                    if ($entriesManager->EditInfo($ItemId, $_POST["title"], $_POST["subtitle"], $dateStart, $dateEnd)) {
-                        redirectToAdminWithArgs("entries-".TypeTag::INFO."-anchor", null); }
-    
+                // save
+                if ($settings->Set(Settings::AdmHiddenEntries, \json_encode($hidden)))
+                {
+                    Auth::redirectToAdmin('recurring');
                 }
 
-                break;
+            }
+            Auth::redirectToAdminWithMessage("{
+                title: 'Fehler beim Ausblenden',
+                description: 'Der Eintrag konnte nicht den Ausgeblendeten Elementen hinzugefügt werden. Versuch es nochmal, ansonsten gib eine Info an den Wachenverantwortlichen.',
+                showWarning: true,
+                mode: 'ok',
+                actionPositive: null
+            }", 'recurring');
+            break;
+    
+    }
 
-            case TypeTag::EVENT:
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// DEFAULT */
+Auth::replyErrorBadRequest();
 
-                if (isset($_POST["title"]) &&
-                    isset($_POST["subtitle"]) &&
-                    isset($_POST["dateStart"])) {
-
-                    // Zeiten konvertieren
-                    $hasTime = false;
-                    $dateStart = $_POST["dateStart"];
-                    $dateEnd = null;
-
-                    if (isset($_POST["dateEnd"]) && strlen($_POST["dateEnd"]) > 0) {$dateEnd = $_POST["dateEnd"];}
-                    if (isset($_POST["timeStart"]) && strlen($_POST["timeStart"]) > 0) {
-
-                        $hasTime = true;
-                        $dateStart .= " " . $_POST["timeStart"]; }
-
-                    if ($dateEnd != null && $hasTime && isset($_POST["timeEnd"]) && strlen($_POST["timeEnd"]) > 0) {
-                        $dateEnd .= " " . $_POST["timeEnd"]; }
-
-                    $hasTime = $hasTime ? 1 : 0;
-
-                    if ($entriesManager->EditEvent($ItemId, $_POST["title"], $_POST["subtitle"], $dateStart, $dateEnd, $hasTime)) {
-                        redirectToAdminWithArgs("entries-".TypeTag::EVENT."-anchor", null); }
-
-                }
-                break;
-
-            case TypeTag::UNIQUETASK:
-
-                if (isset($_POST["title"]) &&
-                    isset($_POST["subtitle"]) &&
-                    isset($_POST["vehicle"]) &&
-                    isset($_POST["dateEnd"]) &&
-                    isset($_POST["timeEnd"])) {
-
-                    $dateEnd = $_POST["dateEnd"] . " " . $_POST["timeEnd"];
-                    $dateStart = null;
-
-                    if (isset($_POST["dateStart"]) && strlen($_POST["dateStart"]) > 0 &&
-                        isset($_POST["timeStart"]) && strlen($_POST["timeStart"]) > 0) {
-                        $dateStart = $_POST["dateStart"] . " " . $_POST["timeStart"];}
-
-                    $showAsEvent = (isset($_POST["showAsEvent"]) && $_POST["showAsEvent"] == "on");
-
-                    if ($entriesManager->EditUniqueTask($ItemId, $_POST["title"], $_POST["subtitle"], $_POST["vehicle"], $dateStart, $dateEnd, $showAsEvent)) {
-                        redirectToAdminWithArgs("entries-".TypeTag::UNIQUETASK."-anchor", null); }
-
-                }
-                break;
-
-            case TypeTag::CYCLEDTASK:
-
-                if (isset($_POST["subtitle"]) &&
-                    isset($_POST["vehicle"]) &&
-                    isset($_POST["cyclemode"]) &&
-                    ($_POST["cyclemode"] == "daily" && isset($_POST["timeStart"]) && isset($_POST["timeEnd"])) ||
-                    ($_POST["cyclemode"] == "week" && isset($_POST["weekday"])) ||
-                    ($_POST["cyclemode"] == "month" && isset($_POST["dayofmonth"]))) {
-
-                    $weekday = null;
-                    $dayofmonth = null;
-
-                    switch ($_POST["cyclemode"]) {
-                        case "daily":
-                            $weekday = -1;
-                            break;
-
-                        case "week":
-                            $weekday = filter_input(INPUT_POST, "weekday", FILTER_VALIDATE_INT);
-                            break;
-
-                        case "month":
-                            $dayofmonth = filter_input(INPUT_POST, "dayofmonth", FILTER_VALIDATE_INT);
-                            break;}
-
-                    if ($entriesManager->EditCycledTask($ItemId, $_POST["subtitle"], $_POST["vehicle"], $weekday, $dayofmonth, $_POST["timeStart"], $_POST["timeEnd"])) {
-                        redirectToAdminWithArgs("entries-".TypeTag::CYCLEDTASK."-anchor", null); }
-
-                }
-                break;
-
-        }
-        break;
-
-    case 'ITEM-DELETE':
-
-        ThrowInvalidSession();
-
-        // Item abrufen
-        $typeTag = filter_input(INPUT_POST, 'typetag', FILTER_SANITIZE_STRING);
-        if ($typeTag === false) {giveErrorBadRequest();}
-
-        $ItemId = filter_input(INPUT_POST, "id", FILTER_VALIDATE_INT);
-        if ($ItemId == null || $ItemId === false) {giveErrorBadRequest();}
-
-        // Item löschen
-        $entriesManager = new EntriesManager();
-        if (!$entriesManager->isReady) {giveErrorServer();}
-
-        if ($entriesManager->DeleteEntry($ItemId)) {
-            redirectToAdminWithArgs("entries-{$typeTag}-anchor", null); }
-
-        break;
-
-    case 'ITEM-REPLACE':
-
-        ThrowInvalidSession();
-
-        $entriesManager = new EntriesManager();
-        if (!$entriesManager->isReady) {giveErrorServer();}
-
-        $orgId = filter_input(INPUT_POST, "orgId", FILTER_VALIDATE_INT);
-        if ($orgId == null || $orgId === false) {$orgId = -1;}
-
-        $replaceId = filter_input(INPUT_POST, "replace_id", FILTER_VALIDATE_INT);
-        if ($replaceId == null || $replaceId === false) {giveErrorBadRequest();}
-
-        if ($orgId == -1) {
-
-            // Replace
-            $replaceDate = null;
-            if (isset($_POST["replace_date"]) && strlen($_POST["replace_date"]) > 0) { $replaceDate = "$_POST[replace_date] 23:59:59"; }
-
-            if (!$entriesManager->ReplaceEntry($replaceId, $replaceDate)) {
-                giveErrorBadRequest(); }
-
-        }
-
-        // UniqueTask
-        if (isset($_POST["title"]) &&
-            isset($_POST["subtitle"]) &&
-            isset($_POST["date"]) &&
-            isset($_POST["timeStart"]) &&
-            isset($_POST["timeEnd"])) {
-
-            $dateEnd = $_POST["date"] . " " . $_POST["timeEnd"];
-            $dateStart = $_POST["date"] . " " . $_POST["timeStart"];
-            $showAsEvent = false;
-
-            if ($entriesManager->EditUniqueTask($orgId, $_POST["title"], $_POST["subtitle"], $replaceId, $dateStart, $dateEnd, $showAsEvent, "REPLACE")) {
-                giveSuccess(); }
-
-        }
-
-        break;
-
-    case 'ITEM-REPLACE-DELETE':
-
-        ThrowInvalidSession();
-
-        $entriesManager = new EntriesManager();
-        if (!$entriesManager->isReady) {giveErrorServer();}
-
-        $orgId = filter_input(INPUT_POST, "orgId", FILTER_VALIDATE_INT);
-        if ($orgId == null || $orgId === false) {giveErrorBadRequest();}
-
-        $replaceId = filter_input(INPUT_POST, "replace_id", FILTER_VALIDATE_INT);
-        if ($replaceId == null || $replaceId === false) {giveErrorBadRequest();}
-
-        if ($entriesManager->DeleteEntry($orgId) &&
-            $entriesManager->DeleteReplacement($replaceId)) {giveSuccess();}
-
-        break;
-}
-
-giveErrorBadRequest();
-
-###################################################################################################
-# Funktionen
-
-function ThrowInvalidSession()
+class Validation 
 {
-    if (!checkAdminSession()) {redirectToLogin();}
-}
-function ThrowNoAdminSession() 
-{
-    if ($_SESSION['WimAdmin'] !== true) { redirectToAdminWithArgs("entries-users-anchor", "error=1&msg=" . urlencode("Für die Bearbeitung der Nutzer fehlen dir die Rechte. > Standortverantw. kontaktieren.")); }
+
+    public static function IsPayloadValid(?string $payload)
+    {
+        try
+        {
+            if ($payload == null) { return false; }
+            $decode = \json_decode($payload);
+            return isset($decode->{'title'}) && is_string($decode->title) && $decode->title !== '';
+        }
+        catch (\Exception $e) { return false; }
+    }
+
+    public static function IsDateValid(?string $date)
+    {
+        return is_string($date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date);
+    }
+    public static function IsTimeValid(?string $time)
+    {
+        return is_string($time) && preg_match('/^\d{2}:\d{2}$/', $time);
+    }
+
+    public static function IsSqlDateValid($dateTimeString)
+    {
+        $dateTimeFormat = 'Y-m-d H:i:s';
+        $dateTimeObject = \DateTime::createFromFormat($dateTimeFormat, $dateTimeString);
+        return $dateTimeObject && $dateTimeObject->format($dateTimeFormat) === $dateTimeString;
+    }
+
 }

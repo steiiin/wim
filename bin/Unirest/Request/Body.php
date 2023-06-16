@@ -1,6 +1,6 @@
 <?php
 
-namespace Unirest\Request;
+namespace WIM\SharepointApi\Unirest\Request;
 
 use Unirest\Request as Request;
 use Unirest\Exception as Exception;

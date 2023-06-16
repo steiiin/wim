@@ -1,32 +1,39 @@
-<?php
+<?php 
 
-require_once 'php-auth.php';
-if (checkAdminSession()) {redirectToAdmin();}
+    namespace WIM;
 
-// Login prüfen
-$msg_login = "";
-if (isset($_POST['login-user']) &&
-    isset($_POST['login-pass'])) {
+    // check Session (if already logged in)
+    require_once dirname(__FILE__) . '/db-auth.php';
+    if (Auth::checkSession()) { Auth::redirectToAdmin(); }
 
-    require_once 'php-db.php';
+    // files ######################################################################################
+    require_once dirname(__FILE__) . '/db-entries.php';
+    require_once dirname(__FILE__) . '/db-users.php';
+    require_once dirname(__FILE__) . '/db-settings.php';
+    
+    // document ###################################################################################
+    $entries = new Entries();
+    $users = new Users();
+    $settings = new Settings();
+    
+    // check Login
+    $loginMessage = '';
 
-    $usersManager = new UsersManager();
-    if ($usersManager->isReady) {
-
-        if ($usersManager->LoginUser($_POST['login-user'], $_POST['login-pass'])) {
-
+    $userName = filter_input(INPUT_POST, "login-user", FILTER_SANITIZE_STRING);
+    $userPass = filter_input(INPUT_POST, "login-pass", FILTER_SANITIZE_STRING);
+    if ($userPass)
+    {
+        if ($users->LoginUser($userName, $userPass))
+        {
+            // save session_id and redirect
             $_SESSION['ident'] = session_id();
-            redirectToAdmin();
-
-        } else {
-            $msg_login = "Falsches Passwort. Oder der Nutzername existiert nicht.";
+            Auth::redirectToAdmin();
         }
-
-    } else {
-        $msg_login = "Netzwerkfehler.";
+        else
+        {
+            $loginMessage = 'Der Nutzername oder das Passwort war falsch.';
+        }
     }
-
-}
 
 ?>
 <!doctype html>
@@ -63,13 +70,28 @@ if (isset($_POST['login-user']) &&
 
         function startUp() {
 
-            editors.showEditor("login");
+            WIM.EDITOR.showEditor('login');
+
+            // create heart-beat-listener
+            document.addEventListener("visibilitychange", async function() 
+            {
+                if (document.visibilityState === "visible") 
+                {
+                    console.log("WIM-ADMIN: user has returned");
+                    try 
+                    {
+                        let respone = await fetch('api.php?action=ACCOUNT-HEARTBEAT', { cache: 'no-store' });
+                        if (respone.ok) { window.location.reload() }
+                    }
+                    catch (error) { console.error(error) }
+                }
+            });
 
         }
 
         function eventResize() {
 
-            editors.calculateEditorPosition();
+            WIM.EDITOR.calculateEditorPosition();
             
         }
 
@@ -91,7 +113,7 @@ if (isset($_POST['login-user']) &&
 
                 <h2>Anmeldung</h2>
                 <p>Bitte melde dich an, um Änderungen am WIM machen zu können.</p>
-                <p style="color:#a00;"><?php echo ($msg_login); ?></p>
+                <p style="color:#a00;"><?=$loginMessage?></p>
 
                 <input name="login-user" placeholder="Nutzerkennung" type="text">
                 <input name="login-pass" placeholder="Passwort" type="password">

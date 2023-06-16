@@ -182,6 +182,27 @@
     text-align: left;
 }
 
+/* Erweiterung NoData */
+#nodata 
+{
+    padding: var(--spec-header-padd);
+}
+
+#nodata h2 {
+    font-family: var(--font-stack-header);
+    text-transform: uppercase;
+    margin: -10px 0 0 0;
+}
+
+#nodata p {
+    margin: 0 0 5px 0;
+    font-family: var(--font-stack-body);
+}
+
+#nodata p:last-child {
+    margin: 0
+}
+
 /* Erweiterung Section & Group */
 section .group .editable {
     padding-left: calc(2 * var(--spec-today-group-list-padd) + var(--spec-icon-size));
@@ -214,33 +235,40 @@ section .searchresult-group .editable button {
     height: 100% !important;
 }
 
-section .group .editable button {
+section .group .editable button,
+section .group .syncable button {
     position: absolute;
     top: 0; left: 0;
     width: calc(var(--spec-today-group-list-padd) + var(--spec-icon-size));
     height: calc(100% - var(--spec-today-group-list-padd));
     background: none;
     border: none;
-    background-image: url(ic_edit_black.svg);
+    background-image: url(ic_btn_edit.svg);
     background-repeat: no-repeat;
 	background-position: 50% 50%;
 }
+section .group .syncable button {
+    background-image: url(ic_btn_refresh.svg);
+}
 
-section .group .editable:last-child button {
+section .group .editable:last-child button,
+section .group .syncable:last-child button {
     height: 100%;
 }
 
-section .group .editable button:hover {
+section .group .editable button:hover,
+section .group .syncable button:hover {
     border: 1px solid var(--base-foreground);
     cursor: pointer;
 }
-section .group .editable button:focus { outline: none; border: none; }
+section .group .editable button:focus,
+section .group .syncable button:focus { outline: none; border: none; }
 
 section .group .editable .select { 
-    background-image: url(ic_action_select.svg) !important;
+    background-image: url(ic_btn_select.svg) !important;
 }
 section .group .editable .select.select-active { 
-    background-image: url(ic_action_selected.svg) !important;
+    background-image: url(ic_btn_selected.svg) !important;
 }
 
 section #entries-cycledtask-list>li {
@@ -251,6 +279,13 @@ section .group h2.subgroup {
     border: 2px solid var(--base-background);
     font-size: var(--spec-events-size-head);
     padding: 5px;
+}
+
+#entries-recurring-list {
+    padding-bottom: 0;
+}
+#entries-recurring-list > li {
+    margin-bottom: 6px;
 }
 
 #editor-templatebusy-searchresult .check {
@@ -348,6 +383,18 @@ section .group h2.subgroup {
     background-repeat: no-repeat;
     padding: 0 0 0 20px;
     font-family: var(--font-stack-subheader);
+}
+
+.editorContainer .editorWindow form .link {
+    font-family: var(--font-stack-header);
+    font-size: 13px;
+    line-height: 15px;
+    margin: 10px 0 3px 1px;
+    color: #444;
+    font-style: italic;
+}
+.editorContainer .editorWindow form .link:hover {
+    color: #f00;
 }
 
 .editorContainer .editorWindow input, .editorContainer .editorWindow select, .editorContainer .editorWindow textarea {

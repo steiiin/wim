@@ -1,6 +1,6 @@
 <?php
 
-namespace Unirest;
+namespace WIM\SharepointApi\Unirest;
 
 class Request
 {

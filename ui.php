@@ -1,8 +1,17 @@
-<?php
+<?php 
 
-    require_once 'php-db.php';
-    $settings = new Settings;
+    namespace WIM;
 
+    // files ######################################################################################
+    require_once dirname(__FILE__) . '/db-entries.php';
+    require_once dirname(__FILE__) . '/db-users.php';
+    require_once dirname(__FILE__) . '/db-settings.php';
+    
+    // document ###################################################################################
+    $entries = new Entries();
+    $users = new Users();
+    $settings = new Settings();
+    
 ?>
 <!doctype html>
 <html lang="de">
@@ -13,7 +22,7 @@
     <meta name="google" content="notranslate">
 
     <link href="res/theme.css" type="text/css;charset=UTF-8" rel="stylesheet">
-    <link href="ui-resolution.php?res=<?=$settings->GetWacheUiResolution();?>" type="text/css;charset=UTF-8" rel="stylesheet">
+    <link href="ui-resolution.php?res=<?=$settings->GetUiResolution(); ?>" type="text/css;charset=UTF-8" rel="stylesheet">
 
     <!-- Light/Dark-Theme -->
     <link rel="preload" href="res/theme-dark.css" as="style" type="text/css" />
@@ -35,25 +44,25 @@
 
         const overflowKeyframe = document.createElement("style");
 
-        <?php
-
-            echo ("window.RequestType = {
-                                INFO: '" . RequestType::INFO . "',
-                                TASK: '" . RequestType::TASK . "',
-                                EVENT: '" . RequestType::EVENT . "'
-                            };");
-
-        ?>
-
         function startUp() {
 
+            // setup overflow container
             var overflowContainer = document.getElementById("todaylayout-overflow");
             overflowContainer.appendChild(overflowKeyframe);
-            
-            ui.startThemeService();
 
-            ui.startDateTimeInfoService();
-            ui.startEntriesService();
+            // convert location-info
+            let location = <?php
+
+                $location = $settings->GetLocation();
+                echo $location === false ? 'null' : $location;
+
+            ?>
+
+            // init wim-module
+            WIM.UI.init(
+                '<?=RequestType::INFO?>', '<?=RequestType::TASK?>', '<?=RequestType::EVENT?>',
+                location?.lat ?? 51, location?.long ?? 13
+            );
 
         }
 
@@ -63,11 +72,16 @@
 
 </head>
 
-<body class="<?=(isset($_GET['nokiosk']) ? "" : "kiosk")?> no-future">
+<body class="<?=(isset($_GET['nokiosk']) ? '' : 'kiosk')?> no-future">
 
     <!-- HEADER -->
     <div id="header">
-        <h1><?=$settings->GetWacheName();?></h1>
+        <h1><?php
+
+            $name = $settings->GetStationName();
+            echo $name === false ? 'Wachenmonitor' : $name;
+
+        ?></h1>
         <div class="header-info-area">
             <div id="ui-clock-time" class="clock">--:--</div>
             <div id="ui-clock-date" class="date">---</div>
@@ -79,7 +93,9 @@
         <div id="todaylayout-overflow">
             <div class="group" id="group-info">
                 <h2>Aktuelle Informationen</h2>
-                <ul id="list-info"></ul>
+                <ul id="list-info">
+                    <div id="init-load">Daten werden geladen ...</div>
+                </ul>
             </div>
             <div class="group" id="group-task" style="display: none;">
                 <h2>Zu Erledigen</h2>
@@ -93,7 +109,6 @@
             <ul id="list-event"></ul>
         </div>
     </section>
-
     <div id="eos-balken">&nbsp;</div>
 
 </body>

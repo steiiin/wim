@@ -18,6 +18,13 @@
 	src: url(Lato-Black.ttf);
 }
 
+@font-face {
+	font-family: 'Material Symbols Rounded';
+	font-style: normal;
+  	font-weight: 100 700;
+	src: url(material-icons.woff2) format('woff2');
+}
+
 :root {
 	--base-accent: #E30513;
 	--font-stack-body: Lato, sans-serif;
@@ -141,6 +148,12 @@ html {
 	z-index: 1;
 }
 
+#init-load {
+    font: var(--spec-today-group-size)/var(--spec-today-group-size) var(--font-stack-header);
+    margin: 0;
+    padding: 0;
+}
+
 body.no-future section#todaylayout {
 	width: 100%;
 }
@@ -162,6 +175,10 @@ section .group ul {
 	list-style: none;
 	margin: 0;
 	padding: var(--spec-today-group-list-padd);
+}
+
+section.preview .group ul {
+	padding: 0;
 }
 
 section .group li {
@@ -196,13 +213,63 @@ section .group li .title {
 	text-transform: uppercase;
 }
 
+section .group li .title .vehicle {
+    background: var(--base-foreground);
+    color: var(--base-background);
+    padding: 2px 4px;
+    margin: 0 6px 0 0;
+}
+
 section .group li .subtext {
 	opacity: .95;
+	line-height: 1;
 }
+
+section .group li .subtext.category,
+section .group li .timeinfo {
+	text-transform: uppercase;
+    font-size: 0.8em;
+    font-weight: bolder;
+}
+
+section .group li .subtext.location {
+	text-transform: uppercase;
+    font-size: 0.8em;
+	display: flex;
+	align-items: center;
+}
+
+.category,
+.location {
+  margin-top: 4px;
+}
+
+.title:not(:has(.vehicle)) + .category,
+.title:not(:has(.vehicle)) + .location {
+  margin-top: 0;
+}
+
+.category + .location {
+  margin-top: 0;
+}
+
+section .group li .timeinfo {
+	margin-top: 4px;
+}
+section .group li .category + .timeinfo,
+section .group li .title:not(:has(.vehicle)) + .timeinfo {
+	margin-top: 0;
+}
+
+section .group li .module {
+	font-size: 0.8em;
+}
+
 
 section .group li .usertag {
 	color: #666;
 	opacity: .95;
+	font-size: 0.75em;
 }
 
 section .group li hr {

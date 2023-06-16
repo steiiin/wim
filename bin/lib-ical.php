@@ -1,5 +1,7 @@
 <?php
 
+namespace WIM\ICal;
+
 class iCal
 {
 	/**
@@ -558,9 +560,9 @@ function get_remote_data($url) {
 	curl_setopt($c, CURLOPT_MAXREDIRS, 10); 
 	
 	$follow_allowed= ( ini_get('open_basedir') || ini_get('safe_mode')) ? false:true;  if ($follow_allowed){curl_setopt($c, CURLOPT_FOLLOWLOCATION, 1);}
-	curl_setopt($c, CURLOPT_CONNECTTIMEOUT, 9);
+	curl_setopt($c, CURLOPT_CONNECTTIMEOUT, 5);
 	curl_setopt($c, CURLOPT_REFERER, $url);    
-	curl_setopt($c, CURLOPT_TIMEOUT, 60);
+	curl_setopt($c, CURLOPT_TIMEOUT, 15);
 	curl_setopt($c, CURLOPT_AUTOREFERER, true);
 	curl_setopt($c, CURLOPT_ENCODING, '');
 	curl_setopt($c, CURLOPT_HEADER, !empty($extra['return_array']));

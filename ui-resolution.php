@@ -1,73 +1,95 @@
 <?php
 
-// Stylesheets definieren
-$uiResolution = array(
-    "1080p" => "
+    namespace WIM;
 
-        :root {
+    class UiResolution
+    {
 
-            --spec-header-size: 60px;
-            --spec-header-padd: 30px;
-        
-            --spec-today-group-size: 30px;
-            --spec-today-group-padd: 10px;
-        
-            --spec-today-content-size: 20px;
-            --spec-today-inactive-size: 15px;
-        
-            --spec-today-group-list-padd: 30px;
+        private static function getResolutions(): array 
+        {
+            return [
 
-            --spec-events-size-head: 18px;
-            --spec-events-size-content: 16px;
+                "1080p" => "
+    
+                    :root {
+            
+                        --spec-header-size: 60px;
+                        --spec-header-padd: 30px;
+                    
+                        --spec-today-group-size: 30px;
+                        --spec-today-group-padd: 10px;
+                    
+                        --spec-today-content-size: 20px;
+                        --spec-today-inactive-size: 15px;
+                    
+                        --spec-today-group-list-padd: 30px;
+            
+                        --spec-events-size-head: 18px;
+                        --spec-events-size-content: 16px;
+            
+                        --spec-icon-size: 24px;
+            
+                    }
+    
+                ",
+                "720p" => "
+            
+                    :root {
+            
+                        --spec-header-size: 50px;
+                        --spec-header-padd: 20px;
+                    
+                        --spec-today-group-size: 25px;
+                        --spec-today-group-padd: 10px;
+                    
+                        --spec-today-content-size: 18px;
+                        --spec-today-inactive-size: 14px;
+                    
+                        --spec-today-group-list-padd: 25px;
+            
+                        --spec-events-size-head: 14px;
+                        --spec-events-size-content: 12px;
+                    
+                        --spec-icon-size: 24px;
+            
+                    }
+            
+                "
+            ];
+        } 
 
-            --spec-icon-size: 24px;
+        public static function Get($key = 'default'): string
+        {
+            
+            // get resoultions-array
+            $resolutions = self::getResolutions();
+
+            // replace key with first key, if default or not existing
+            if ($key == 'default' || !array_key_exists($key, $resolutions))
+            {
+                $key = array_key_first($resolutions);
+            }
+
+            // return
+            return $resolutions[$key];
 
         }
 
-    ",
-    "720p" => "
-
-        :root {
-
-            --spec-header-size: 50px;
-            --spec-header-padd: 20px;
-        
-            --spec-today-group-size: 25px;
-            --spec-today-group-padd: 10px;
-        
-            --spec-today-content-size: 18px;
-            --spec-today-inactive-size: 14px;
-        
-            --spec-today-group-list-padd: 25px;
-
-            --spec-events-size-head: 14px;
-            --spec-events-size-content: 12px;
-        
-            --spec-icon-size: 24px;
-
+        public static function GetAvailable(): array
+        {
+            return array_keys(self::getResolutions());
         }
 
-    "
-);
+        public static function KeyExists($key): bool
+        {
+            return array_key_exists($key, self::getResolutions());
+        }
 
-// Stylesheet zurückgeben
-$paramRes = filter_input(INPUT_GET, 'res', FILTER_SANITIZE_STRING);
-if ($paramRes === 'default') { $paramRes = array_key_first($uiResolution); }
 
-foreach ($uiResolution as $res => $sheet) {
-    if ($res === $paramRes) {
+    }
+
+    if (isset($_GET['res'])) 
+    {
         header('Content-Type: text/css');
-        die($sheet); } }
-
-// ################################################################################################
-
-function GetStyleOptions() {
-
-    global $uiResolution;
-
-    $html = "";
-    foreach ($uiResolution as $style => $sheet) {
-        $html .= "<option value=\"{$style}\"> {$style} </option>"; }
-    return $html;
-
-}
+        die(UiResolution::Get($_GET['res']));
+    }

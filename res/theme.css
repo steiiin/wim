@@ -240,16 +240,20 @@ section .group li .subtext.location {
 }
 
 .category,
-.location {
+.location,
+.description {
   margin-top: 4px;
 }
 
 .title:not(:has(.vehicle)) + .category,
-.title:not(:has(.vehicle)) + .location {
+.title:not(:has(.vehicle)) + .location,
+.title:not(:has(.vehicle)) + .description {
   margin-top: 0;
 }
 
-.category + .location {
+.category + .location,
+.category + .description,
+.location + .description {
   margin-top: 0;
 }
 

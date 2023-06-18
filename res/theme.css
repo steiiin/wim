@@ -210,6 +210,14 @@ section .group .warn {
 	min-height: var(--spec-icon-size);
 }
 
+section .group .weather {
+	background-image: var(--icon-weather);
+	background-position: 0 calc(50% - (var(--spec-today-group-list-padd) / 2));
+	background-repeat: no-repeat;
+	padding-left: calc(var(--spec-today-group-list-padd) + var(--spec-icon-size));
+	min-height: var(--spec-icon-size);
+}
+
 section .group li .title {
 	font-family: var(--font-stack-bodybold);
 	text-transform: uppercase;
@@ -275,7 +283,8 @@ section .group li hr {
 	border-width: 1px;
 	margin: var(--spec-today-group-list-padd) 250px 0 0;
 }
-section .group li.warn hr {
+section .group li.warn hr,
+section .group li.weather hr {
 	margin-left: calc(-1 * (var(--spec-today-group-list-padd) + var(--spec-icon-size)));
 }
 
@@ -291,7 +300,7 @@ body.no-future #eos-balken, body.no-future section#futurelayout, section .group 
 	display: none;
 }
 
-section .group .check:last-child, section .group .warn:last-child {
+section .group .check:last-child, section .group .warn:last-child, section .group .weather:last-child {
 	background-position: 0 50%;
 }
 

@@ -53,11 +53,11 @@
                         --spec-header-padd: 20px;
                         --spec-today-group-size: 14px;
                         --spec-today-group-padd: 10px;
-                        --spec-today-content-size: 14px;
+                        --spec-today-content-size: 16px;
                         --spec-today-inactive-size: 14px;
                         --spec-today-group-list-padd: 20px;
                         --spec-events-size-head: 14px;
-                        --spec-events-size-content: 12px;
+                        --spec-events-size-content: 11px;
                         --spec-icon-size: 20px;
             
                     }

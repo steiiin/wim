@@ -910,6 +910,7 @@ class UserInterface
             else if ($severity == "extreme") { $severity = $provider == "dwd" ? "Warnstufe: Extremes Unwetter" : "Warnstufe: Extreme Gefahr"; }
             else { $severity = ""; }
         }
+        $isWeather = $provider == "dwd";
 
         // set provider description
         if ($provider == "dwd") { $provider = "Deutscher Wetterdienst"; }
@@ -920,8 +921,9 @@ class UserInterface
         // create payload
         $data = [
             'key' => $item->ID,
+            'warntype' => $isWeather ? "weather" : "warn",
             'title' => $item->Title,
-            'category' => $item->Provider
+            'category' => $provider
         ];
         if ($type !== "") { $data['vehicle'] = $type; }
         if ($severity !== "") { $data['location'] = $severity; }
@@ -1198,7 +1200,8 @@ class UserInterface
 
                 case TypeTag::WARN:
 
-                    $html .= "<li class='warn'>";
+                    $isWeather = isset($payload->warntype) && $payload->warntype == "weather";
+                    $html .= "<li class='".($isWeather ? "weather" : "warn")."'>";
 
                     // payload ------------------------------------------------------------------
                     $html .= self::GenerateHtmlOfPayload($payload);

@@ -250,7 +250,8 @@ section .group li .timeinfo {
 }
 
 .meta + .description,
-.meta + .timeinfo {
+.meta + .timeinfo,
+.description + .timeinfo {
   margin-top: 0;
 }
 

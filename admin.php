@@ -378,7 +378,7 @@
 
                 <h3>Amtlicher Regionalschlüssel</h3>
                 <input id="editor-moduleNina-input-ars" name="auto-ars" placeholder="Amtlicher Regionalschlüssel z.B. 146270000000" type="text"
-                    oninput="WIM.EDITOR.moduleNinaEditor.validate()">
+                    oninput="this.value=this.value.trim();WIM.EDITOR.moduleNinaEditor.validate()">
                 <a class="link" href="https://www.xrepository.de/api/xrepository/urn:de:bund:destatis:bevoelkerungsstatistik:schluessel:rs_2021-07-31/download/Regionalschl_ssel_2021-07-31.json" target="_blank">Schlüssel finden (letzte 7 Stellen nullen)</a>
 
                 <button id="editor-moduleNina-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;"

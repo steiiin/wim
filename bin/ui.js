@@ -1773,6 +1773,9 @@ var WIM = (function () {
             validate: function () {
                 let isValid = true
 
+                let sanitizedValue = FormHelper.inputGetValue('editor-moduleNina-input-ars').replace(/\D/g, '') // Remove non-digit characters
+                FormHelper.inputSetValue('editor-moduleNina-input-ars', sanitizedValue)
+
                 isValid = FormHelper.inputIsEmpty('editor-moduleNina-input-ars') ? false : isValid
                 isValid = (/^\d{12}$/).test(FormHelper.inputGetValue('editor-moduleNina-input-ars')) ? isValid : false
                 

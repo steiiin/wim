@@ -288,14 +288,18 @@
                     onclick="WIM.EDITOR.disableUI(true);">Speichern</button>
             </form>
             <div id="editor-settings-actioncontainer-importexport" style="margin-top:-10px">
-                    <button id="editor-settings-btn-export" class="btn btn-input" type="button" style="margin-top:10px;"
-                        onclick="WIM.EDITOR.settingsEditor.invokeExport();">Exportiere Einträge &amp; Einstellungen</button>
-                        <form id="editor-settings-import-form" action="api.php?action=WIM-IMPORT" method="post" enctype="multipart/form-data">
-                            <label for="editor-settings-btn-import" class="btn btn-input" style="margin-top:10px;text-align:center">
-                                <input id="editor-settings-btn-import" name="file" type="file" style="display:none"
-                                    onchange="WIM.EDITOR.settingsEditor.invokeImport();">Importiere Einträge &amp; Einstellungen</label>
-                        </form>
+                <div>
+                    <input id="editor-settings-export-withmodules" type="checkbox">
+                    <label for="editor-settings-export-withmodules" class="checkbox-label">Moduleinstellungen exportieren (Achtung: inklusive Passwörter)</label>
                 </div>
+                <button id="editor-settings-btn-export" class="btn btn-input" type="button" style="margin-top:10px;"
+                    onclick="WIM.EDITOR.settingsEditor.invokeExport();">Exportiere Einträge &amp; Einstellungen</button>
+                <form id="editor-settings-import-form" action="api.php?action=WIM-IMPORT" method="post" enctype="multipart/form-data">
+                    <label for="editor-settings-btn-import" class="btn btn-input" style="margin-top:10px;text-align:center">
+                        <input id="editor-settings-btn-import" name="file" type="file" style="display:none"
+                            onchange="WIM.EDITOR.settingsEditor.invokeImport();">Importiere Einträge &amp; Einstellungen</label>
+                    </form>
+            </div>
         </div>
 
         <!-- Module - Einstellungen -->

@@ -603,6 +603,9 @@ if ($paramAction == false) { Auth::replyErrorBadRequest(); }
 
         case 'WIM-EXPORT':
 
+            $withModules = filter_input(INPUT_GET, 'modules', FILTER_SANITIZE_STRING);
+            $withModules = $withModules !== null && $withModules !== false && $withModules == 1;
+
             try
             {
 
@@ -610,7 +613,7 @@ if ($paramAction == false) { Auth::replyErrorBadRequest(); }
                 $settings = new Settings();
                 $users = new Users();
                 $exportEntries = $entries->LoadExport();
-                $exportSettings = $settings->LoadExport();
+                $exportSettings = $settings->LoadExport($withModules);
                 $exportUsers = $users->LoadExport();
                 if ($exportEntries !== false &&
                     $exportSettings !== false &&

@@ -237,9 +237,13 @@ var WIM = (function () {
         },
 
         /* CHECKBOX */
-        checkboxState: function (htmlId, isChecked) {
+        checkboxSet: function (htmlId, isChecked) {
             let checkbox = document.getElementById(htmlId);
             if (checkbox.type === 'checkbox') { checkbox.checked = isChecked }
+        },
+        checkboxGet: function (htmlId) {
+            let checkbox = document.getElementById(htmlId);
+            return checkbox.checked ?? false;
         },
 
         /* FORM */
@@ -477,7 +481,7 @@ var WIM = (function () {
             document.body.removeChild(link)
         },
 
-        downloadExport: function () {
+        downloadExport: function (withModules) {
             
             let now = new Date()
             let dateOptions = DateHelper.getDateFraction(now, false, false)
@@ -485,7 +489,7 @@ var WIM = (function () {
             let datetimelbl = dateOptions + '-' + timeOptions
             
             let link = document.createElement('a')
-            link.href = 'api.php?action=WIM-EXPORT'
+            link.href = 'api.php?action=WIM-EXPORT' + (withModules ? '&modules=1' : '')
             link.download = 'wim-'+datetimelbl+'.json'
             link.style.display = 'none'
 
@@ -803,7 +807,7 @@ var WIM = (function () {
 
             create: function () {
                 FormHelper.inputSetValue('editor-user-input-loginuser', '')
-                FormHelper.checkboxState('editor-user-input-wimadmin', false)
+                FormHelper.checkboxSet('editor-user-input-wimadmin', false)
 
                 FormHelper.domVisibility('editor-user-action-passreset', false)
                 FormHelper.domVisibility('editor-user-action-deleteuser', false)
@@ -816,7 +820,7 @@ var WIM = (function () {
             },
             edit: function (id, username, isAdmin) {
                 FormHelper.inputSetValue('editor-user-input-loginuser', username)
-                FormHelper.checkboxState('editor-user-input-wimadmin', isAdmin)
+                FormHelper.checkboxSet('editor-user-input-wimadmin', isAdmin)
 
                 FormHelper.domVisibility('editor-user-action-passreset', true)
                 FormHelper.domVisibility('editor-user-action-deleteuser', true)
@@ -1006,13 +1010,18 @@ var WIM = (function () {
             },
 
             invokeExport: function () {
+
+                let withModules = FormHelper.checkboxGet('editor-settings-export-withmodules') ;
+
+                FileHelper.downloadExport(withModules)
+
                 EDITOR.showMessage({
                     title: 'Einstellungen exportieren',
-                    description: 'Die Datei, die du als nächstes herunterlädst enthält bis auf die Kalendermodule alle Einstellungen &amp; Einträge. In einem anderen WIM, kannst du diese Datei wieder importieren.',
+                    description: 'Die Datei, die gerade heruntergeladen wurde enthält ' + (withModules ? '' : '- bis auf die Moduleinstellungen -') + 'alle Einstellungen dieses WIMs. In einem anderen WIM, kannst du diese wieder importieren. (Oder du nimmst diese Datei als Backup)',
                     showWarning: false,
                     mode: 'ok',
                     disableOnAction: false,
-                    actionPositive: () => { FileHelper.downloadExport() },
+                    actionPositive: null,
                     actionNegative: null,
                 })
             },
@@ -1302,7 +1311,7 @@ var WIM = (function () {
                 FormHelper.inputSetValue('editor-task-datetime-date-end', '')
                 FormHelper.inputSetValue('editor-task-datetime-time-start', '')
                 FormHelper.inputSetValue('editor-task-datetime-time-end', '')
-                FormHelper.checkboxState('editor-task-datetime-beforeEvent', true)
+                FormHelper.checkboxSet('editor-task-datetime-beforeEvent', true)
 
                 FormHelper.domVisibility('editor-task-action-delete', false)
                 FormHelper.domSetInnerText('editor-task-btn-save', 'Hinzufügen')
@@ -1335,7 +1344,7 @@ var WIM = (function () {
                 FormHelper.inputSetValue('editor-task-datetime-date-end', dateEnd)
                 FormHelper.inputSetValue('editor-task-datetime-time-start', timeStart)
                 FormHelper.inputSetValue('editor-task-datetime-time-end', timeEnd)
-                FormHelper.checkboxState('editor-task-datetime-beforeEvent', showUpcoming)
+                FormHelper.checkboxSet('editor-task-datetime-beforeEvent', showUpcoming)
 
                 EDITOR.taskEditor.validate()
                 EDITOR.showEditor('task')
@@ -1800,528 +1809,3 @@ var WIM = (function () {
 })();
 
 window.WIM = WIM;
-
-
-
-
-
-//     // TEMPLATE: KFZ
-//     editorTemplateKfzCreate: function () {
-
-//         editors.setSelectValue("editor-templatekfz-select-vehicle", 0);
-//         editors.setSelectValue("editor-templatekfz-select-reason", 0);
-
-//         FormHelper.inputSetValue("editor-templatekfz-datetime-date", "");
-
-//         editors.editorTemplateKfzValidation();
-//         editors.showEditor("templatekfz");
-
-//     },
-//     editorTemplateKfzValidation: function () {
-
-//         var isValid = false;
-//         if (editors.hasValueEditor("editor-templatekfz-datetime-date")) {
-//             if (dateutil.checkDateActual(editors.getValueEditor("editor-templatekfz-datetime-date"))) { isValid = true; }
-//         }
-
-//         var subtitle = "Das Fahrzeug auf den Reserve-RTW tauschen und vor die Waschhalle stellen.";
-
-//         var isReserve = editors.getSelectValueEditor("editor-templatekfz-select-vehicle") == "RTW 3";
-
-//         if (isReserve) { subtitle = null; }
-//         FormHelper.inputSetValue("editor-templatekfz-typetag", isReserve ? "EVENT" : "UNIQUETASK");
-
-//         FormHelper.inputSetValue("editor-templatekfz-hidden-subtitle", subtitle);
-
-//         if (isValid) {
-
-//             if (isReserve) {
-
-//                 FormHelper.inputSetValue("editor-templatekfz-hidden-title", editors.getSelectValueEditor("editor-templatekfz-select-vehicle") + ': ' + editors.getSelectValueEditor("editor-templatekfz-select-reason"));
-
-//                 FormHelper.inputSetValue("editor-templatekfz-hidden-date-start", editors.getValueEditor("editor-templatekfz-datetime-date"));
-//                 FormHelper.inputSetValue("editor-templatekfz-hidden-time-start", "");
-//                 FormHelper.inputSetValue("editor-templatekfz-hidden-date-end", "");
-//                 FormHelper.inputSetValue("editor-templatekfz-hidden-time-end", "");
-
-//             } else {
-
-//                 FormHelper.inputSetValue("editor-templatekfz-hidden-title", editors.getSelectValueEditor("editor-templatekfz-select-reason"));
-
-//                 var eDate = new Date(editors.getValueEditor("editor-templatekfz-datetime-date") + "T00:00:00");
-
-//                 var tStart = new Date(eDate.getTime());
-//                 tStart.setTime(tStart.getTime() - (6 * 60 * 60 * 1000));
-
-//                 var tEnd = new Date(eDate.getTime());
-//                 tEnd.setTime(tEnd.getTime() + (6 * 60 * 60 * 1000));
-
-//                 FormHelper.inputSetValue("editor-templatekfz-hidden-date-start", dateutil.convertToInputDate(tStart));
-//                 FormHelper.inputSetValue("editor-templatekfz-hidden-time-start", dateutil.convertToInputTime(tStart));
-//                 FormHelper.inputSetValue("editor-templatekfz-hidden-date-end", dateutil.convertToInputDate(tEnd));
-//                 FormHelper.inputSetValue("editor-templatekfz-hidden-time-end", dateutil.convertToInputTime(tEnd));
-
-//             }
-//         }
-
-//         editors.setBtnEnabledEditor("editor-templatekfz-btn-save", isValid);
-
-//     },
-
-//     // TEMPLATE: EVWT
-//     editorTemplateEvWTCreate: function () {
-
-//         FormHelper.inputSetValue("editor-templateevwt-input-event", "");
-//         FormHelper.inputSetValue("editor-templateevwt-datetime-date", "")
-//         FormHelper.inputSetValue("editor-templateevwt-datetime-time", "")
-
-//         FormHelper.inputSetValue("editor-templateevwt-input-task", "")
-//         FormHelper.inputSetValue("editor-templateevwt-input-projection", "12");
-
-//         editors.editorTemplateEvWTValidation();
-//         editors.showEditor("templateevwt");
-
-//     },
-//     editorTemplateEvWTValidation: function () {
-
-//         var isValid = true;
-
-//         // Input
-//         if (!editors.hasValueEditor("editor-templateevwt-input-event")) { isValid = false; }
-//         if (!editors.hasValueEditor("editor-templateevwt-input-task")) { isValid = false; }
-//         if (!(editors.hasValueEditor("editor-templateevwt-input-projection") &&
-//             varExt.isInt(editors.getValueEditor("editor-templateevwt-input-projection")) &&
-//             editors.getValueEditor("editor-templateevwt-input-projection") > 0)) { isValid = false; }
-
-//         // Event-DateTime
-//         if (!dateutil.checkDateTimeActual(
-//             editors.getValueEditor("editor-templateevwt-datetime-date"),
-//             editors.getValueEditor("editor-templateevwt-datetime-time"))) { isValid = false; }
-
-//         editors.setBtnEnabledEditor("editor-templateevwt-btn-save", isValid);
-
-//     },
-//     editorTemplateEvWTInvokeSubmit: function () {
-
-//         FormHelper.domVisibility("messageDisableOverlay", true);
-
-//         // Ereignisse vorbereiten
-//         var eventTitle = editors.getValueEditor("editor-templateevwt-input-event");
-//         var eventSubtitle = editors.getValueEditor("editor-templateevwt-input-eventsub");
-//         var eventDateStart = editors.getValueEditor("editor-templateevwt-datetime-date");
-//         var eventTimeStart = editors.getValueEditor("editor-templateevwt-datetime-time");
-
-//         var taskTitle = "Wegen: " + eventTitle;
-//         var taskSubtitle = editors.getValueEditor("editor-templateevwt-input-task");
-//         var eDate = new Date(eventDateStart + "T" + eventTimeStart + ":00");
-//         eDate.setHours(eDate.getHours() - editors.getValueEditor("editor-templateevwt-input-projection"));
-//         var taskDateStart = dateutil.convertToInputDate(eDate);
-//         var taskTimeStart = dateutil.convertToInputTime(eDate);
-//         var taskDateEnd = eventDateStart;
-//         var taskTimeEnd = eventTimeStart;
-
-//         // Event erstellen
-//         const dataEvent = new URLSearchParams();
-//         dataEvent.append('id', -1);
-//         dataEvent.append('typetag', 'EVENT');
-//         dataEvent.append('title', eventTitle);
-//         dataEvent.append('subtitle', eventSubtitle);
-//         dataEvent.append('dateStart', eventDateStart);
-//         dataEvent.append('timeStart', eventTimeStart);
-
-//         // Task erstellen
-//         const dataTask = new URLSearchParams();
-//         dataTask.append('id', -1);
-//         dataTask.append('typetag', 'UNIQUETASK');
-//         dataTask.append('title', taskTitle);
-//         dataTask.append('subtitle', taskSubtitle);
-//         dataTask.append('vehicle', '');
-//         dataTask.append('dateStart', taskDateStart);
-//         dataTask.append('timeStart', taskTimeStart);
-//         dataTask.append('dateEnd', taskDateEnd);
-//         dataTask.append('timeEnd', taskTimeEnd);
-
-//         fetch("api.php?action=ITEM-EDIT",
-//             {
-//                 method: 'POST',
-//                 redirect: 'manual',
-//                 body: dataEvent
-//             })
-//             .then(response => response.text())
-//             .then(html => { })
-//             .finally(function () {
-
-//                 // UniqueTask erstellen
-//                 fetch("api.php?action=ITEM-EDIT",
-//                     {
-//                         method: 'POST',
-//                         redirect: 'manual',
-//                         body: dataTask
-//                     })
-//                     .then(response => response.text())
-//                     .then(html => { })
-//                     .finally(function () {
-//                         editors.submitForm("editor-form-templateevwt");
-//                     });
-
-//             });
-
-//     },
-
-//     // TEMPLATE: Busy
-//     editorTemplateBusyCreate: function () {
-
-//         FormHelper.inputSetValue("editor-templatebusy-datetime-date", "");
-
-//         editors.setEditorToolArgs('editor-templatebusy-tool-mode', 'mode', 'none');
-//         FormHelper.inputSetValue('editor-id-templatebusy', -1);
-
-//         document.getElementById("editor-templatebusy-searchresult").innerHTML = "";
-
-//         editors.setInnerHtmlEditor("editor-templatebusy-btn-save", "Hinzufügen");
-//         FormHelper.domVisibility("editor-templatebusy-action-delete", false);
-
-//         editors.editorTemplateBusyValidation();
-//         editors.showEditor("templatebusy");
-
-//     },
-//     editorTemplateBusyEdit: function (id, replaceId, title, subtitle, replaceDate, timeStart, timeEnd) {
-
-//         // Dienst laden & anzeigen
-//         FormHelper.domVisibility("messageDisableOverlay", true);
-//         editors.setEditorToolArgs('editor-templatebusy-tool-mode', 'mode', 'none');
-
-//         FormHelper.inputSetValue('editor-id-templatebusy', id);
-//         FormHelper.inputSetValue("editor-templatebusy-input-replacedid", replaceId);
-
-//         FormHelper.inputSetValue("editor-templatebusy-input-title", title);
-//         FormHelper.inputSetValue("editor-templatebusy-input-subtitle", subtitle);
-
-//         FormHelper.inputSetValue("editor-templatebusy-datetime-date-start", replaceDate);
-//         FormHelper.inputSetValue("editor-templatebusy-datetime-time-start", timeStart);
-//         FormHelper.inputSetValue("editor-templatebusy-datetime-time-end", timeEnd);
-
-//         editors.setInnerHtmlEditor("editor-templatebusy-btn-save", "Speichern");
-//         FormHelper.domVisibility("editor-templatebusy-action-delete", true);
-
-//         const data = new URLSearchParams();
-//         data.append('id', replaceId);
-
-//         fetch("api.php?action=ADMIN-GET-UI-SINGLEID",
-//             {
-//                 method: 'POST',
-//                 redirect: 'manual',
-//                 body: data
-//             })
-//             .then(response => response.text())
-//             .then(html => {
-//                 document.getElementById("editor-templatebusy-searchresult").innerHTML = html;
-//             })
-//             .finally(function () {
-
-//                 FormHelper.domVisibility("messageDisableOverlay", false);
-//                 editors.setEditorToolArgs('editor-templatebusy-tool-mode', 'mode', 'edit');
-
-//                 editors.editorTemplateBusyValidation();
-//                 editors.showEditor("templatebusy");
-
-//             });
-
-
-
-//     },
-//     editorTemplateBusyValidation: function () {
-
-//         var isValid = true;
-
-//         var toolMode = document.getElementById("editor-templatebusy-tool-mode").getAttribute("mode");
-
-//         // SearchTask
-//         searchValid = true;
-//         if (!dateutil.checkDateActual(
-//             editors.getValueEditor("editor-templatebusy-datetime-date")
-//         )) { searchValid = false; }
-//         editors.setBtnEnabledEditor("editor-templatebusy-btn-searchtask", searchValid);
-
-//         // Tool-Mode
-//         FormHelper.domVisibility("editor-templatebusy-input-title", toolMode != "none");
-//         FormHelper.domVisibility("editor-templatebusy-input-subtitle", toolMode != "none");
-
-//         FormHelper.domVisibility("editor-templatebusy-datetime-header-start", toolMode != "none");
-//         FormHelper.domVisibility("editor-templatebusy-datetime-date-start", toolMode != "none");
-//         FormHelper.domVisibility("editor-templatebusy-datetime-time-start", toolMode != "none");
-//         FormHelper.domVisibility("editor-templatebusy-datetime-time-end", toolMode != "none");
-
-//         FormHelper.domVisibility("editor-templatebusy-hr-resultdiv", toolMode != "none");
-//         FormHelper.domVisibility("editor-templatebusy-hr-replace-header", toolMode != "none");
-
-//         FormHelper.domVisibility("editor-templatebusy-hr-search-header", toolMode != "edit");
-//         FormHelper.domVisibility("editor-templatebusy-datetime-date", toolMode != "edit", "inline-block");
-//         FormHelper.domVisibility("editor-templatebusy-btn-searchtask", toolMode != "edit", "inline-block");
-
-//         switch (toolMode) {
-//             case 'none':
-//                 isValid = false;
-
-//                 break;
-
-//             case 'edit':
-//             case 'selected':
-
-//                 if (!editors.hasValueEditor("editor-templatebusy-input-title")) { isValid = false; }
-
-//                 if (!dateutil.checkDateTime(
-//                     editors.getValueEditor("editor-templatebusy-datetime-date-start"),
-//                     editors.getValueEditor("editor-templatebusy-datetime-time-start"),
-//                     editors.getValueEditor("editor-templatebusy-datetime-date-start"),
-//                     editors.getValueEditor("editor-templatebusy-datetime-time-end"))) { isValid = false; }
-
-//                 if (!dateutil.checkDateTimeActual(
-//                     editors.getValueEditor("editor-templatebusy-datetime-date-start"),
-//                     editors.getValueEditor("editor-templatebusy-datetime-time-end"))) { isValid = false; }
-
-//                 break;
-
-//         }
-
-//         editors.calculateEditorPosition();
-
-//         editors.setBtnEnabledEditor("editor-templatebusy-btn-save", isValid);
-
-//     },
-//     editorTemplateBusyInvokeSearch: function () {
-
-//         FormHelper.domVisibility("messageDisableOverlay", true);
-//         editors.setEditorToolArgs('editor-templatebusy-tool-mode', 'mode', 'none');
-
-//         fetch("api.php?action=ADMIN-SEARCH-CYCLEDTASK&date=" + editors.getValueEditor("editor-templatebusy-datetime-date"), { cache: "no-store" })
-//             .then(response => response.text())
-//             .then(html => {
-
-//                 document.getElementById("editor-templatebusy-searchresult").innerHTML = html;
-
-//             })
-//             .finally(function () {
-
-//                 FormHelper.domVisibility("messageDisableOverlay", false);
-//                 editors.editorTemplateBusyValidation();
-
-//             });
-
-//     },
-//     editorTemplateBusyInvokeSelect: function (sender, id, subtitle, title, timeStart, timeEnd) {
-
-//         [...document.getElementById("editor-templatebusy-searchresult").getElementsByTagName("button")].forEach(item => { item.classList.remove("select-active") });
-//         sender.classList.add("select-active");
-
-//         FormHelper.inputSetValue("editor-templatebusy-input-replacedid", id);
-
-//         FormHelper.inputSetValue("editor-templatebusy-input-title", title);
-//         FormHelper.inputSetValue("editor-templatebusy-input-subtitle", subtitle);
-
-//         FormHelper.inputSetValue("editor-templatebusy-datetime-date-start", dateutil.convertToInputDate(new Date()));
-//         FormHelper.inputSetValue("editor-templatebusy-datetime-time-start", timeStart);
-//         FormHelper.inputSetValue("editor-templatebusy-datetime-time-end", timeEnd);
-
-//         editors.setEditorToolArgs('editor-templatebusy-tool-mode', 'mode', 'selected');
-//         editors.editorTemplateBusyValidation();
-
-//     },
-//     editorTemplateBusyInvokeSubmit: function () {
-
-//         FormHelper.domVisibility("messageDisableOverlay", true);
-
-//         // Ereignisse vorbereiten
-//         var replaceId = editors.getValueEditor("editor-templatebusy-input-replacedid");
-//         var replaceDate = editors.getValueEditor("editor-templatebusy-datetime-date");
-
-//         var originalId = editors.getValueEditor("editor-id-templatebusy");
-//         var taskTitle = editors.getValueEditor("editor-templatebusy-input-title");
-//         var taskSubtitle = editors.getValueEditor("editor-templatebusy-input-subtitle");
-//         var taskDate = editors.getValueEditor("editor-templatebusy-datetime-date-start");
-//         var taskTimeStart = editors.getValueEditor("editor-templatebusy-datetime-time-start");
-//         var taskTimeEnd = editors.getValueEditor("editor-templatebusy-datetime-time-end");
-
-//         // Task erstellen
-//         const dataTask = new URLSearchParams();
-//         dataTask.append('replace_id', replaceId);
-//         dataTask.append('replace_date', replaceDate);
-
-//         dataTask.append('orgId', originalId);
-//         dataTask.append('title', taskTitle);
-//         dataTask.append('subtitle', taskSubtitle);
-//         dataTask.append('date', taskDate);
-//         dataTask.append('timeStart', taskTimeStart);
-//         dataTask.append('timeEnd', taskTimeEnd);
-
-//         fetch("api.php?action=ITEM-REPLACE",
-//             {
-//                 method: 'POST',
-//                 redirect: 'manual',
-//                 body: dataTask
-//             })
-//             .then(response => response.text())
-//             .then(html => { })
-//             .finally(function () {
-
-//                 editors.submitForm("editor-form-templatebusy");
-
-//             });
-
-//     },
-//     editorTemplateBusyInvokeDelete: function () {
-
-//         FormHelper.domVisibility("messageDisableOverlay", true);
-
-//         // Ereignisse vorbereiten
-//         var replaceId = editors.getValueEditor("editor-templatebusy-input-replacedid");
-//         var originalId = editors.getValueEditor("editor-id-templatebusy");
-
-//         // Task erstellen
-//         const dataTask = new URLSearchParams();
-//         dataTask.append('replace_id', replaceId);
-//         dataTask.append('orgId', originalId);
-
-//         fetch("api.php?action=ITEM-REPLACE-DELETE",
-//             {
-//                 method: 'POST',
-//                 redirect: 'manual',
-//                 body: dataTask
-//             })
-//             .then(response => response.text())
-//             .then(html => { })
-//             .finally(function () {
-
-//                 editors.submitForm("editor-form-templatebusy");
-
-//             });
-
-//     },
-
-//     // MESSAGES
-
-
-// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////77
-
-// var dateutil = {
-
-//     getWochentag: function (date) {
-
-//         date = date || new Date();
-//         if (date.getDay == null) { date = new Date(); }
-
-//         var wochentag = date.getDay()
-//         if (wochentag == 0) return "Sonntag";
-//         if (wochentag == 1) return "Montag";
-//         if (wochentag == 2) return "Dienstag";
-//         if (wochentag == 3) return "Mittwoch";
-//         if (wochentag == 4) return "Donnerstag";
-//         if (wochentag == 5) return "Freitag";
-//         if (wochentag == 6) return "Samstag";
-
-//         return "";
-
-//     },
-
-//     getMonthName: function (date) {
-
-//         date = date || new Date();
-//         if (date.getMonth == null) { date = new Date(); }
-
-//         var monat = date.getMonth()
-//         if (monat == 0) return "Januar";
-//         if (monat == 1) return "Februar";
-//         if (monat == 2) return "März";
-//         if (monat == 3) return "April";
-//         if (monat == 4) return "Mai";
-//         if (monat == 5) return "Juni";
-//         if (monat == 6) return "Juli";
-//         if (monat == 7) return "August";
-//         if (monat == 8) return "September";
-//         if (monat == 9) return "Oktober";
-//         if (monat == 10) return "November";
-//         if (monat == 11) return "Dezember";
-
-//         return "";
-
-//     },
-
-//     checkDate: function (startDate, endDate) {
-//         return dateutil.checkDateTime(startDate, "00:00", endDate, "00:00");
-//     },
-//     checkDateTime: function (startDate, startTime, endDate, endTime) {
-
-//         var start = new Date(startDate + " " + startTime);
-//         var ende = new Date(endDate + " " + endTime);
-
-//         if (varExt.isDate(start) && varExt.isDate(ende)) { return ende > start; }
-//         return false;
-
-//     },
-//     checkTime: function (startTime, endTime) {
-
-//         var start = new Date("2000-01-01 " + startTime);
-//         var ende = new Date("2000-01-01 " + endTime);
-
-//         if (varExt.isDate(start) && varExt.isDate(ende)) { return ((ende > start) || (startTime == "00:00" && endTime == "00:00")); }
-//         return false;
-
-//     },
-
-
-//     convertToInputTime: function (date) {
-//         return String(date.getHours()).padStart(2, '0') + ":" + String(date.getMinutes()).padStart(2, '0');
-//     },
-//     convertToInputDate: function (date) {
-//         return String(date.getFullYear()) + '-' + String(date.getMonth(date) + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
-//     }
-
-// }
-
-// var jsext = {
-
-//     stringIsEmptyOrWhitespace: function (str) {
-//         return str === null || str.match(/^ *$/) !== null || str.length == 0;
-//     },
-//     stringGenerateHash: function (str) {
-
-//         var hash = 0;
-//         str = str || "";
-
-//         if (str.length == null || str.length == 0) return hash;
-
-//         for (i = 0; i < str.length; i++) {
-//             char = str.charCodeAt(i);
-//             hash = ((hash << 5) - hash) + char;
-//             hash = hash & hash;
-//         }
-
-//         return hash;
-
-//     },
-
-
-
-// }
-
-// var varExt = {
-
-//     isDate: function (date) {
-//         return date instanceof Date && !isNaN(date);
-//     },
-
-//     isEmail: function (mail) {
-//         var pattern = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/;
-//         return (typeof mail === "string") && pattern.test(mail);
-//     },
-
-//     isInt: function (inttxt) {
-//         return Number.isInteger(parseInt(inttxt, 10));
-//     },
-
-//     isOnlyAlpha: function (text) {
-//         var pattern = /^[a-zA-ZäöüÄÖÜ\s]+$/;
-//         return text.match(pattern);
-//     }
-
-// }

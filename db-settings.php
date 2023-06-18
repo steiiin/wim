@@ -122,12 +122,13 @@ class Settings
 
     // Import #####################################################################################
 	
-    public function LoadExport()
+    public function LoadExport($withModules = false)
     {
         $settings = [];
         try 
         {
-            $sql = "SELECT * FROM `CONFIG` WHERE `IsModule`=0;";
+
+            $sql = "SELECT * FROM `CONFIG`".($withModules ? ";" : " WHERE `IsModule`=0;");
             $statement = $this->connection->query($sql);
             while ($row = $statement->fetch_object())
             {
@@ -149,9 +150,10 @@ class Settings
             if (!\is_array($entry)) { continue; }
             $key = $entry['KEY'] ?? '';
             $value = $entry['VAL'] ?? '';
+            $isModule = $entry['IsModule'] == 1;
             if ($key == '' || $value == '') { continue; }
             
-            $result = $this->Set($key, $value) ? $result : false;
+            $result = $this->Set($key, $value, $isModule) ? $result : false;
         }
         return $result;
 

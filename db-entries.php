@@ -1222,9 +1222,11 @@ class UserInterface
     {
 
         $html = "";
-        $anyMeta = isset($payload->category) || isset($payload->location);
-        $duoMeta = isset($payload->category) && isset($payload->location);
-        $hasVehicle = isset($payload->vehicle);
+        $anyMeta = (isset($payload->category) && is_string($payload->category) && trim($payload->category) !== '') || 
+                   (isset($payload->location) && is_string($payload->location) && trim($payload->location) !== '');
+        $duoMeta = (isset($payload->category) && is_string($payload->category) && trim($payload->category) !== '') && 
+                   (isset($payload->location) && is_string($payload->location) && trim($payload->location) !== '');
+        $hasVehicle = isset($payload->vehicle) && is_string($payload->vehicle) && trim($payload->vehicle) !== '';
 
         // title-text
         $html .= "<div class='title".($hasVehicle ? " vehicle'>" : "'>");

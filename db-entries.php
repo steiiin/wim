@@ -5,6 +5,7 @@ namespace WIM;
 // files ##########################################################################################
 require_once dirname(__FILE__) . '/cron-auto-abfall.php';
 require_once dirname(__FILE__) . '/cron-auto-maltesercloud.php';
+require_once dirname(__FILE__) . '/cron-auto-nina.php';
 
 // imports ########################################################################################
 
@@ -13,6 +14,7 @@ class TypeTag
 {
 
     const INFO = 'INFO';
+    const WARN = 'WARN';
     const EVENT = 'EVENT';
     const TASK = 'TASK';
     const RECURRING = 'RECURRING';
@@ -20,6 +22,7 @@ class TypeTag
     public static function IsValidType($tag)
     {
         return $tag == self::INFO ||
+               $tag == self::WARN ||
                $tag == self::EVENT ||
                $tag == self::TASK ||
                $tag == self::RECURRING;
@@ -33,6 +36,7 @@ class RequestType
     const INFO = 'INFO-AREA';
     const TASK = 'TASK-AREA';
     const EVENT = 'EVENT-AREA';
+    const WARN = 'WARN-AREA';
 
     const ADMIN_INFO = 'ADMIN_INFO';
     const ADMIN_TASK = 'ADMIN_TASK';
@@ -52,6 +56,7 @@ class RequestType
     public static function IsValidType($tag)
     {
         return $tag == self::INFO ||
+               $tag == self::WARN ||
                $tag == self::TASK ||
                $tag == self::EVENT ||
                $tag == self::ADMIN_INFO ||
@@ -104,9 +109,41 @@ class Entries
         $this->connection->query($sql);
 
         // clean ENTRYDB
-        $filterDate = gmdate("Y-m-d\TH:i:s\Z", strtotime('-7 days'));
-        $sql = "DELETE FROM `ENTRYDB` WHERE DATEEND < '$filterDate';";
-        $this->connection->query($sql);
+        $requestedNow = date("Y-m-d H:i:s");
+        $requested0000 = date("Y-m-d")." 00:00:00";
+        $sql = "DELETE FROM `ENTRYDB` WHERE 
+                    (
+                        `TYPETAG` = '".TypeTag::INFO."' AND `DATEEND` < '$requestedNow'
+                    ) 
+                    OR
+                    (
+                        `TYPETAG` = '".TypeTag::WARN."' AND `DATEEND` < '$requestedNow'
+                    ) 
+                    OR
+                    (
+                        `TYPETAG` = '".TypeTag::TASK."' AND `DATEEND` < '$requestedNow'
+                    )
+                    OR
+                    (
+                        `TYPETAG` = '".TypeTag::EVENT."' AND
+                        (
+                            `DATEEND` IS NULL AND
+                            (
+                                (`DATEHASTIME`=1 AND `DATESTART` < '$requestedNow') OR
+                                (`DATEHASTIME`=0 AND `DATESTART` < '$requested0000')
+                            )
+                        )
+                        OR
+                        (
+                            `DATEEND` IS NOT NULL AND
+                            (
+                                (`DATEHASTIME`=1 AND `DATEEND` < '$requestedNow') OR
+                                (`DATEHASTIME`=0 AND `DATEEND` < '$requested0000')
+                            )
+                        )
+                    )
+        ";
+        $result = $this->connection->query($sql);
 
     }
 
@@ -126,8 +163,8 @@ class Entries
         $usertag = $autotag != '' ? 'wim-automatic' : $_SESSION['User'];
 
         // prepare datetime
-        if ($dateStart !== null) { $dateStart = UserInterface::GenerateDatetime($dateStart); }
-        if ($dateEnd !== null) { $dateEnd = UserInterface::GenerateDatetime($dateEnd); }
+        if ($dateStart !== null) { $dateStart = UserInterface::GenerateDatetime($dateStart, '00:00'); }
+        if ($dateEnd !== null) { $dateEnd = UserInterface::GenerateDatetime($dateEnd, '23:59'); }
 
         // prepare meta
         $hasTime = $hasTime ? 1 : 0;
@@ -187,6 +224,76 @@ class Entries
                     $dateEnd,
                     $showTime,
                     $showUpcoming,
+                    $id);
+            }
+
+            $result = $statement->execute();
+            $statement->close();
+            return $result !== false;
+            
+        }
+        catch (\Throwable $e) { return false; }
+    }
+
+    public function EditWarn($id, string $payload, ?string $dateStart, ?string $dateEnd, ?string $timeStart, ?string $timeEnd, string $autotag = '')
+    {
+        if ($this->connection === false) { return false; }
+
+        $typetag = TypeTag::WARN;
+        $usertag = $autotag != '' ? 'wim-automatic' : $_SESSION['User'];
+
+        // prepare datetime
+        $dateStart = UserInterface::GenerateDatetime($dateStart, $timeStart);
+        $dateEnd = UserInterface::GenerateDatetime($dateEnd, $timeEnd);
+
+        try 
+        {
+
+            // create new
+            if ($id === false)
+            {
+                $sql = "INSERT INTO `ENTRYDB` (
+                    `USERTAG`, 
+                    `TYPETAG`, 
+                    `AUTOTAG`, 
+                    `PAYLOAD`, 
+                    `DATESTART`, 
+                    `DATEEND`, 
+                    `DATEHASTIME`,
+                    `DATESHOWTIME`) VALUES (?, ?, ?, ?, ?, ?, 1, 1)
+                ";
+                $statement = $this->connection->prepare($sql);
+                $statement->bind_param('ssssss',
+                    $usertag,
+                    $typetag,
+                    $autotag,
+                    $payload,
+                    $dateStart,
+                    $dateEnd);
+            }
+
+            // update existing entry
+            else
+            {
+                $sql = "UPDATE `ENTRYDB` SET
+                    `USERTAG`=?,
+                    `TYPETAG`=?, 
+                    `AUTOTAG`=?, 
+                    `PAYLOAD`=?, 
+                    `DATESTART`=?, 
+                    `DATEEND`=?, 
+                    `DATEHASTIME`=1,
+                    `DATESHOWTIME`=1
+                    WHERE `ID`=?
+                ";
+                $statement = $this->connection->prepare($sql);
+                $statement->bind_param('ssssssi',
+                    $usertag,
+                    $typetag,
+                    $autotag,
+                    $payload,
+                    $dateStart,
+                    $dateEnd,
                     $id);
             }
 
@@ -634,8 +741,8 @@ class Entries
                         `TYPETAG` = '".TypeTag::EVENT."' AND 
                         (
                             (`DATEHASTIME` = 0 AND `DATESTART` <= '$requested0000') OR 
-                            (`DATEHASTIME` = 1 AND `DATESTART` <= '$requestedNow' AND `DATEEND` IS NULL) OR 
-                            (`DATEHASTIME` = 1 AND `DATESTART` <= '$requestedNow' AND `DATEEND` >= '$requestedNow') 
+                            (`DATEHASTIME` = 1 AND `DATESTART` <= '$requested2359' AND `DATEEND` IS NULL) OR 
+                            (`DATEHASTIME` = 1 AND `DATESTART` <= '$requested2359' AND `DATEEND` >= '$requestedNow') 
                         )
                     ) 
                     ORDER BY `PAYLOAD` ASC";
@@ -670,10 +777,13 @@ class Entries
 
             case RequestType::EVENT: 
                 return "SELECT * FROM `ENTRYDB` WHERE 
-                    (`TYPETAG` = '".TypeTag::EVENT."' AND `DATESTART` > '$requestedNow') OR 
-                    (`TYPETAG` = '".TypeTag::TASK."' AND `TASK_SHOWUPCOMING` = 1 AND `DATEEND` > '$requested2359') 
-                    ORDER BY `DATEEND` ASC, `DATESTART` ASC";
+                    (`TYPETAG` = '".TypeTag::EVENT."' AND `DATESTART` > '$requested2359') OR 
+                    (`TYPETAG` = '".TypeTag::TASK."' AND `TASK_SHOWUPCOMING` = 1 AND `DATESTART` > '$requestedNow') 
+                    ORDER BY `DATESTART` ASC, `DATEEND` ASC";
         
+            case RequestType::WARN:
+                return "SELECT * FROM `ENTRYDB` WHERE `TYPETAG` = '".TypeTag::WARN."' ORDER BY `PAYLOAD` ASC";
+                
             case RequestType::ADMIN_INFO:
                 return "SELECT * FROM `ENTRYDB` WHERE `TYPETAG` = '".TypeTag::INFO."'$filterUser ORDER BY `DATESTART` ASC, `PAYLOAD` ASC";
             case RequestType::ADMIN_TASK:
@@ -777,6 +887,48 @@ class UserInterface
         return \json_encode($data);
     }
 
+    public static function GetPayloadFromWarningInfo(NinaApi\WarningItem $item)
+    {
+
+        $id = $item->ID;
+        $title = $item->Title;
+        $provider = strtolower($item->Provider);
+
+        // set type & severity
+        $severity = strtolower($item->Severity);
+        $type = strtolower($item->Type);
+        if ($type == "cancel")
+        {
+            $severity = "";
+            $type = "Entwarnung";
+        }
+        else
+        {
+            $type = $severity == "minor" ? "Information" : "Warnung";
+            if ($severity == "moderate") { $severity = $provider == "dwd" ? "Warnstufe: Markantes Wetter" : "Warnstufe: Moderat"; }
+            else if ($severity == "severe") { $severity = $provider == "dwd" ? "Warnstufe: Unwetter" : "Warnstufe: Gefahr"; }
+            else if ($severity == "extreme") { $severity = $provider == "dwd" ? "Warnstufe: Extremes Unwetter" : "Warnstufe: Extreme Gefahr"; }
+            else { $severity = ""; }
+        }
+
+        // set provider description
+        if ($provider == "dwd") { $provider = "Deutscher Wetterdienst"; }
+        else if ($provider == "police") { $provider = "Polizeimeldungen"; }
+        else if ($provider == "lhp") { $provider = "Hochwassermeldungen"; }
+        else { $provider = "Katastrophenschutz"; }
+        
+        // create payload
+        $data = [
+            'key' => $item->ID,
+            'title' => $item->Title,
+            'category' => $item->Provider
+        ];
+        if ($type !== "") { $data['vehicle'] = $type; }
+        if ($severity !== "") { $data['location'] = $severity; }
+
+        return \json_encode($data);
+    }
+
     public static function GetPayloadFromAbfallEvent(ICal\iCal_Event $event)
     {
         $title = '';
@@ -803,6 +955,7 @@ class UserInterface
         if ($dt === false) { return ''; }
 
         $now = new \DateTime();
+        if ($dt < $now) { return ''; }
         
         $isToday = ($now->format('Y-m-d') == $dt->format('Y-m-d'));
         $isSameYear = ($now->format('Y') == $dt->format('Y'));
@@ -932,13 +1085,17 @@ class UserInterface
                         if (!$calcStartIsToday && !$showTime)
                         {
                             $timeInfo = self::GetFriendlyDate($dtEnd, false);
+                            $timeInfo = $timeInfo == '' ? '' : "- $timeInfo";
+
                             $html .= '<li>';
-                            $html .= "<div class='title'>$payload->title - $timeInfo</div>";
+                            $html .= "<div class='title'>$payload->title $timeInfo</div>";
                             break;
                         }
 
-                        $timeInfo .= self::GetFriendlyDate($dtEnd, $showTime);
-                        if ($timeInfo) { $timeInfo = "BIS $timeInfo"; }
+                        $timeInfo = self::GetFriendlyDate($dtStart, $showTime);
+
+                        $until = self::GetFriendlyDate($dtEnd, $showTime);
+                        if ($until) { $timeInfo = $timeInfo == "" ? "BIS $until" : "$timeInfo - $until"; }
 
                     }
                     else
@@ -950,7 +1107,7 @@ class UserInterface
                         {
                             if ($showTime) 
                             {
-                                $timeInfo .= $timeInfo ? ' - ' : '';
+                                $timeInfo .= $timeInfo ? ' - ' : 'BIS ';
                                 $timeInfo .= $dtEnd->format('H:i');
                             }
                         }
@@ -959,6 +1116,11 @@ class UserInterface
                             $endInfo = self::GetFriendlyDate($dtEnd, $showTime);
                             $timeInfo .= $endInfo ? ' - ' : '';
                             $timeInfo .= $endInfo;
+                        }
+                        if ($timeInfo == '') 
+                        {
+                            // norange - sameday - admin
+                            $timeInfo = 'Heute';
                         }
 
                     }
@@ -992,7 +1154,7 @@ class UserInterface
                     }
                     else
                     {
-                        $timeInfo .= $adminView && $dtStart !== false && $dtStart > $dtNow ? 'Sichtbar ab: '.self::GetFriendlyDate($dtStart, true).($showUpcoming ? ' (In der Terminliste)' : '').', ' : '';
+                        $timeInfo .= $adminView && $dtStart !== false && $dtStart > $dtNow ? 'Sichtbar ab: '.self::GetFriendlyDate($dtStart, true).($showUpcoming ? ' (Vorher Terminliste)' : '').', ' : '';
                         $timeInfo .= 'Zu Erledigen bis: '.self::GetFriendlyDate($dtEnd, true);
                     }
 
@@ -1052,6 +1214,19 @@ class UserInterface
                     $timeInfo .= $adminView ? " ({$dtStart->format('H:i')}-{$dtEnd->format('H:i')})" : "";
                     $html .= $timeInfo ? "<div class='timeinfo'>$timeInfo</div>" : '';
                     if ($isHidden) { $html .= "<div class='timeinfo'>(Heute Ausgeblendet)</div>"; }
+                    break;
+
+                case TypeTag::WARN:
+
+                    $html .= "<li class='warn'>";
+
+                    // payload ------------------------------------------------------------------
+                    $html .= "<div class='title'>";
+                    $html .= $payload->vehicle ? "<span class='vehicle'>$payload->vehicle</span>" : ''; 
+                    $html .= "$payload->title</div>";
+                    if ($payload->category) { $html .= "<div class='subtext category'>$payload->category</div>"; }
+                    if ($payload->location) { $html .= "<div class='subtext location'>$payload->location</div>"; }
+                    if ($payload->description) { $html .= "<div class='subtext description'>$payload->description</div>"; }
                     break;
 
             }

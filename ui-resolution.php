@@ -15,18 +15,13 @@
             
                         --spec-header-size: 60px;
                         --spec-header-padd: 30px;
-                    
                         --spec-today-group-size: 30px;
                         --spec-today-group-padd: 10px;
-                    
                         --spec-today-content-size: 20px;
                         --spec-today-inactive-size: 15px;
-                    
                         --spec-today-group-list-padd: 30px;
-            
                         --spec-events-size-head: 18px;
                         --spec-events-size-content: 16px;
-            
                         --spec-icon-size: 24px;
             
                     }
@@ -38,18 +33,13 @@
             
                         --spec-header-size: 50px;
                         --spec-header-padd: 20px;
-                    
                         --spec-today-group-size: 25px;
                         --spec-today-group-padd: 10px;
-                    
                         --spec-today-content-size: 18px;
                         --spec-today-inactive-size: 14px;
-                    
                         --spec-today-group-list-padd: 25px;
-            
                         --spec-events-size-head: 14px;
                         --spec-events-size-content: 12px;
-                    
                         --spec-icon-size: 24px;
             
                     }
@@ -61,9 +51,9 @@
             
                         --spec-header-size: 40px;
                         --spec-header-padd: 20px;
-                        --spec-today-group-size: 20px;
+                        --spec-today-group-size: 14px;
                         --spec-today-group-padd: 10px;
-                        --spec-today-content-size: 16px;
+                        --spec-today-content-size: 14px;
                         --spec-today-inactive-size: 14px;
                         --spec-today-group-list-padd: 20px;
                         --spec-events-size-head: 14px;

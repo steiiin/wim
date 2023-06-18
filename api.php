@@ -27,7 +27,7 @@ if ($paramAction == false) { Auth::replyErrorBadRequest(); }
             $entries = (new Entries())->LoadEntries($requestType);
             if ($entries === false) { Auth::replyErrorServer(); }
 
-            // filter output
+            // filter output if in search
             $hidden = [];
             if ($requestType == RequestType::ADMIN_RECURRING_SEARCH || !RequestType::IsAdminViewType($requestType))
             {
@@ -352,6 +352,16 @@ if ($paramAction == false) { Auth::replyErrorBadRequest(); }
                     $module->run();
                     break;
 
+                case 'NINA':
+
+                    require_once dirname(__FILE__) . '/cron-auto-nina.php';
+                    $users = new Users();
+                    $entries = new Entries();
+                    $settings = new Settings();
+                    $module = new ModuleNina($users, $entries, $settings);
+                    $module->run();
+                    break;
+
                 default:
                     Auth::replyErrorBadRequest();
             }
@@ -559,6 +569,29 @@ if ($paramAction == false) { Auth::replyErrorBadRequest(); }
                             }", 'module');
                         }
                     }
+                    Auth::redirectToAdmin('modules');
+                    break;
+
+                case 'NINA':
+                
+                    // get parameter
+                    $ars = filter_input(INPUT_POST, 'auto-ars', FILTER_SANITIZE_STRING);
+
+                    // prepare connectors
+                    $settings = new Settings();
+
+                    // save parameter
+                    if ($ars === false || preg_match('/^\d{12}$/', $ars) !== 1 || !$settings->Set(ModuleNina::ARS, $ars, true)) 
+                    { 
+                        Auth::redirectToAdminWithMessage("{
+                            title: 'Fehler beim Speichern',
+                            description: 'Der Schlüssel konnte nicht gespeichert werden. Ist er im richtigen Format?',
+                            showWarning: true,
+                            mode: 'ok',
+                            actionPositive: null
+                        }", 'module');
+                    }
+                    
                     Auth::redirectToAdmin('modules');
                     break;
 
@@ -839,6 +872,16 @@ if ($paramAction == false) { Auth::replyErrorBadRequest(); }
                 // get hidden-list
                 $settings = new Settings();
                 $hidden = $settings->GetHiddenEntries();
+                $currentDate = new \DateTime();
+
+                // filter existing keys
+                foreach ($hidden as $key => $value) {
+                    $date = \DateTime::createFromFormat('Y-m-d', $key);  // Convert the key to DateTime object
+
+                    if ($date < $currentDate) {
+                        unset($hidden[$key]);  // Delete the key-value pair
+                    }
+                }
 
                 // create if date not exists
                 if (!isset($hidden[$hiddenDate])) 

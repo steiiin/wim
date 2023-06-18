@@ -46,7 +46,7 @@
     font-size: calc(var(--spec-header-size) / 3); line-height: calc(var(--spec-header-size) / 3);
 }
 
-@media screen and (max-width: 900px) {
+@media screen and (max-width: 690px) {
 
     #header {
         height: calc(var(--spec-header-padd) * 2 + (var(--spec-header-size) / 2));
@@ -96,7 +96,15 @@
     top: 0;
     right: 0;
 }
-@media screen and (max-width: 900px) {
+.group .tools.full-width {
+        position: relative;
+        width: 100%;
+        background: #000;
+        border-top: 1px solid #333;
+        border-bottom: 1px solid #fff;
+        text-align: right;
+}
+@media screen and (max-width: 690px) {
     .group .tools {
         position: relative;
         width: 100%;

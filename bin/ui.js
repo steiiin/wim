@@ -4,6 +4,7 @@ var WIM = (function () {
     var ui_requestTypeInfo = '';
     var ui_requestTypeTask = '';
     var ui_requestTypeEvent = '';
+    var ui_requestTypeWarn = '';
     var ui_wimlocation = { lat: 51.1239082542166, long: 13.585863667297769 };
 
     var adm_currentOpenedEditor = null;
@@ -98,7 +99,8 @@ var WIM = (function () {
             var noEntries = true;
 
             // fetch info-area
-            var listInfoHtml = await UiHelper.fetchEntriesForType(ui_requestTypeInfo);
+            var listWarnHtml = await UiHelper.fetchEntriesForType(ui_requestTypeWarn);
+            var listInfoHtml = listWarnHtml + (await UiHelper.fetchEntriesForType(ui_requestTypeInfo));
             if (listInfoHtml) {
                 noEntries = false;
 
@@ -417,6 +419,10 @@ var WIM = (function () {
             return str === null || str.trim().length === 0
         },
 
+        escapeHtml: function (input) {
+            return new Option(input).innerHTML;
+        }
+
     };
 
     var CookieHelper = {
@@ -494,11 +500,12 @@ var WIM = (function () {
     var UI = {
 
         init: function (
-            infoTag, taskTag, eventTag,
+            infoTag, taskTag, eventTag, warnTag,
             locationLat, locationLong) {
             ui_requestTypeInfo = infoTag
             ui_requestTypeTask = taskTag
             ui_requestTypeEvent = eventTag
+            ui_requestTypeWarn = warnTag
             ui_wimlocation = { lat: locationLat, long: locationLong }
 
             setTimeout(UiHelper.updateClock, 0)
@@ -682,11 +689,11 @@ var WIM = (function () {
         createPayload: function (title, description, category, location, vehicle) {
             let payload = {}
             payload.key = (vehicle ? vehicle + '#' : '') + (category ? category + '#' : '') + (location ? location + '#' : '') + title
-            payload.title = StringHelper.stringIsEmptyOrWhitespace(title) ? 'Information' : title
-            if (!StringHelper.stringIsEmptyOrWhitespace(description)) { payload.description = description }
-            if (!StringHelper.stringIsEmptyOrWhitespace(category)) { payload.category = category }
-            if (!StringHelper.stringIsEmptyOrWhitespace(location)) { payload.location = location }
-            if (!StringHelper.stringIsEmptyOrWhitespace(vehicle)) { payload.vehicle = vehicle }
+            payload.title = StringHelper.stringIsEmptyOrWhitespace(title) ? 'Information' : StringHelper.escapeHtml(title)
+            if (!StringHelper.stringIsEmptyOrWhitespace(description)) { payload.description = StringHelper.escapeHtml(description) }
+            if (!StringHelper.stringIsEmptyOrWhitespace(category)) { payload.category = StringHelper.escapeHtml(category) }
+            if (!StringHelper.stringIsEmptyOrWhitespace(location)) { payload.location = StringHelper.escapeHtml(location) }
+            if (!StringHelper.stringIsEmptyOrWhitespace(vehicle)) { payload.vehicle = StringHelper.escapeHtml(vehicle) }
             return payload
         },
 
@@ -1802,7 +1809,32 @@ var WIM = (function () {
                 FormHelper.formSetToolState('editor-moduleMaltesercloud-actiontool', 'tool-action', value)
             },
 
-        }
+        },
+
+        // module-nina
+        moduleNinaEditor: {
+
+            create: function (ars) {
+                FormHelper.inputSetValue('editor-moduleNina-input-ars', ars)
+
+                EDITOR.moduleNinaEditor.validate()
+                EDITOR.showEditor('moduleNina')
+            },
+            validate: function () {
+                let isValid = true
+
+                isValid = FormHelper.inputIsEmpty('editor-moduleNina-input-ars') ? false : isValid
+                isValid = (/^\d{12}$/).test(FormHelper.inputGetValue('editor-moduleNina-input-ars')) ? isValid : false
+                
+                FormHelper.domEnabled('editor-moduleNina-btn-save', isValid)
+                EDITOR.calculateEditorPosition()
+            },
+
+            invokeRefresh: function () {
+
+            }
+
+        },
 
     };
 

@@ -283,6 +283,9 @@ section .group li hr {
 	border-width: 1px;
 	margin: var(--spec-today-group-list-padd) 250px 0 0;
 }
+section .group li.warn hr {
+	margin-left: calc(-1 * (var(--spec-today-group-list-padd) + var(--spec-icon-size)));
+}
 
 section .group .check hr {
 	margin: var(--spec-today-group-list-padd);

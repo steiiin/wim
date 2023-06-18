@@ -60,7 +60,7 @@
 
             // init wim-module
             WIM.UI.init(
-                '<?=RequestType::INFO?>', '<?=RequestType::TASK?>', '<?=RequestType::EVENT?>',
+                '<?=RequestType::INFO?>', '<?=RequestType::TASK?>', '<?=RequestType::EVENT?>', '<?=RequestType::WARN?>',
                 location?.lat ?? 51, location?.long ?? 13
             );
 

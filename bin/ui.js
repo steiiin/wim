@@ -265,12 +265,26 @@ var WIM = (function () {
         /* PREVIEW */
         previewItem: function (htmlId, payload) {
 
+            let anyMeta = payload.category || payload.location
+            let duoMeta = payload.category && payload.location
+            let hasVehicle = !StringHelper.stringIsEmptyOrWhitespace(payload.vehicle ?? '')
+
+            // title
             let html = "<div class='group'><ul><li>"
-            html += "<div class='title'>"
-            html += payload.vehicle ? "<span class='vehicle'>" + payload.vehicle + "</span>" : ""
-            html += payload.title + "</div>"
-            html += payload.category ? "<div class='subtext category'>" + payload.category + "</div>" : ""
-            html += payload.location ? "<div class='subtext location'>" + payload.location + "</div>" : ""
+            html += "<div class='title" + (hasVehicle ? " vehicle'>" : "'>")
+            html += hasVehicle ? "<span>" + payload.vehicle + "</span>" : ""
+            html += payload.title
+            html += "</div>"
+
+            // meta
+            if (anyMeta)
+            {
+                html += "<div class='subtext meta'>"
+                html += (payload.category ?? '')
+                html += duoMeta ? " (" + payload.location + ")" : (payload.location ?? '')
+                html += "</div>"
+            }
+
             html += payload.description ? "<div class='subtext description'>" + payload.description + "</div>" : ""
             html += payload.timeinfo ? "<div class='timeinfo'>" + payload.timeinfo + "</div>" : ""
 
@@ -1602,70 +1616,6 @@ var WIM = (function () {
                 FormHelper.inputSetValue('editor-hidetask-btn-save', alreadyHidden ? 'Wieder Einblenden' : 'Ausblenden')
 
                 FormHelper.domEnabled('editor-hidetask-btn-save', selectedId >= 0)
-
-                return
-                
-
-                // create payload & preview
-                let title = FormHelper.inputGetValue('editor-recurring-input-title')
-                if (StringHelper.stringIsEmptyOrWhitespace(title)) { title = 'Kein Titel'; isValid = false }
-                
-                let description = FormHelper.inputGetValue('editor-recurring-input-description')
-                let category = FormHelper.inputGetValue('editor-recurring-input-category')
-                let location = FormHelper.inputGetValue('editor-recurring-input-location')
-                let vehicle = FormHelper.selectGetValue('editor-recurring-select-vehicle')
-
-                let payload = EDITOR.createPayload(title, description, category, location, vehicle)
-                FormHelper.previewItem('editor-recurring-preview', payload)
-                FormHelper.inputSetValue('editor-recurring-input-payload', JSON.stringify(payload))
-
-                // update mode
-                let showToolModeDaily = FormHelper.formGetToolState('editor-recurring-tool-cyclemode', 'tool-mode', 'daily') == 'daily'
-                let showToolModeWeekly = FormHelper.formGetToolState('editor-recurring-tool-cyclemode', 'tool-mode', 'daily') == 'weekly'
-                let showToolModeMonthly = FormHelper.formGetToolState('editor-recurring-tool-cyclemode', 'tool-mode', 'daily') == 'monthly'
-                let showToolModeLastday = FormHelper.formGetToolState('editor-recurring-tool-cyclemode', 'tool-mode', 'daily') == 'lastday'
-                
-                FormHelper.domVisibility('editor-recurring-tool-cyclemode-daily', !showToolModeDaily, 'inline-block')
-                FormHelper.domVisibility('editor-recurring-tool-cyclemode-weekly', !showToolModeWeekly, 'inline-block')
-                FormHelper.domVisibility('editor-recurring-tool-cyclemode-monthly', !showToolModeMonthly, 'inline-block')
-                FormHelper.domVisibility('editor-recurring-tool-cyclemode-lastday', !showToolModeLastday, 'inline-block')
-                
-                FormHelper.domVisibility('editor-recurring-cyclemode-weekly-select', showToolModeWeekly || showToolModeLastday)
-                FormHelper.domVisibility('editor-recurring-cyclemode-monthly-select', showToolModeMonthly)
-
-                let cycleText = 'Täglich. Jeden einzelnen Tag.'
-                if (showToolModeDaily) 
-                {
-                    FormHelper.inputSetValue('editor-recurring-input-cyclemode', '0')
-                }
-                if (showToolModeWeekly) 
-                {
-                    cycleText = 'Jede Woche am ' + FormHelper.selectGetLabel('editor-recurring-cyclemode-weekly-select', 'Montag') + '.'
-                    FormHelper.inputSetValue('editor-recurring-input-cyclemode', '1')
-                }
-                if (showToolModeMonthly)
-                {
-                    cycleText = 'Jeden Monat am ' + FormHelper.selectGetLabel('editor-recurring-cyclemode-monthly-select', '1.')
-                    let dom = FormHelper.selectGetValue('editor-recurring-cyclemode-monthly-select')
-                    FormHelper.inputSetValue('editor-recurring-input-cyclemode', dom == '-1' ? '3' : '2') /* dom==-1 > last day of month */
-                }
-                if (showToolModeLastday)
-                {
-                    cycleText = 'Jeden Letzten ' + FormHelper.selectGetLabel('editor-recurring-cyclemode-weekly-select', 'Montag') + ' im Monat.'
-                    FormHelper.inputSetValue('editor-recurring-input-cyclemode', '4')
-                }
-                FormHelper.domSetInnerText('editor-recurring-cyclemode-header', cycleText)
-
-                // validitation
-                isValid = FormHelper.timeIsValid('editor-recurring-datetime-time-start') ? isValid : false
-                isValid = FormHelper.timeIsValid('editor-recurring-datetime-time-end') ? isValid : false
-                if (!StringHelper.stringIsEmptyOrWhitespace(FormHelper.inputGetValue('editor-recurring-input-title')) && !isValid) { this.changeTiming(); this.validate(); return }
-                isValid = FormHelper.timeEndAfterStart('editor-recurring-datetime-time-start', 'editor-recurring-datetime-time-end') ? isValid : false
-                
-
-                // set button
-                EDITOR.calculateEditorPosition()
-                FormHelper.domEnabled('editor-recurring-btn-save', isValid)
 
             },
 

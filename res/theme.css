@@ -213,7 +213,7 @@ section .group li .title {
 	text-transform: uppercase;
 }
 
-section .group li .title .vehicle {
+section .group li .title.vehicle span {
     background: var(--base-foreground);
     color: var(--base-background);
     padding: 2px 4px;
@@ -222,47 +222,36 @@ section .group li .title .vehicle {
 
 section .group li .subtext {
 	opacity: .95;
+	font-size: 0.9em;
 	line-height: 1;
 }
 
-section .group li .subtext.category,
+section .group li .meta,
 section .group li .timeinfo {
 	text-transform: uppercase;
     font-size: 0.8em;
     font-weight: bolder;
 }
 
-section .group li .subtext.location {
-	text-transform: uppercase;
-    font-size: 0.8em;
-	display: flex;
-	align-items: center;
+.timeinfo {
+	margin-top: 4px;
 }
 
-.category,
-.location,
-.description {
+.title + .meta,
+.title + .description,
+.title + .timeinfo {
+  margin-top: 0;
+}
+
+.vehicle + .meta,
+.vehicle + .description,
+.vehicle + .timeinfo {
   margin-top: 4px;
 }
 
-.title:not(:has(.vehicle)) + .category,
-.title:not(:has(.vehicle)) + .location,
-.title:not(:has(.vehicle)) + .description {
+.meta + .description,
+.meta + .timeinfo {
   margin-top: 0;
-}
-
-.category + .location,
-.category + .description,
-.location + .description {
-  margin-top: 0;
-}
-
-section .group li .timeinfo {
-	margin-top: 4px;
-}
-section .group li .category + .timeinfo,
-section .group li .title:not(:has(.vehicle)) + .timeinfo {
-	margin-top: 0;
 }
 
 section .group li .module {

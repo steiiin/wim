@@ -1049,12 +1049,7 @@ class UserInterface
                     $html .= $adminView ? "<button onclick=\"WIM.EDITOR.infoEditor.edit($entry->ID, $encodedPayload, $encodedDateStart, $encodedDateEnd);\">&nbsp;</button>" : '';
 
                     // payload ------------------------------------------------------------------
-                    $html .= "<div class='title'>";
-                    $html .= $payload->vehicle ? "<span class='vehicle'>$payload->vehicle</span>" : ''; 
-                    $html .= "$payload->title</div>";
-                    if ($payload->category) { $html .= "<div class='subtext category'>$payload->category</div>"; }
-                    if ($payload->location) { $html .= "<div class='subtext location'>$payload->location</div>"; }
-                    if ($payload->description) { $html .= "<div class='subtext description'>$payload->description</div>"; }
+                    $html .= self::GenerateHtmlOfPayload($payload);
 
                     // time-info -----------------------------------------------------------------
                     if ($adminView && $dtStart !== false && $dtEnd !== false)
@@ -1132,12 +1127,7 @@ class UserInterface
                     $html .= $adminView ? "<button onclick=\"WIM.EDITOR.eventEditor.edit($entry->ID, $encodedPayload, $encodedDateStart, $encodedTimeStart, $encodedDateEnd, $encodedTimeEnd);\">&nbsp;</button>" : '';
                     
                     // payload ------------------------------------------------------------------
-                    $html .= "<div class='title'>";
-                    $html .= $payload->vehicle ? "<span class='vehicle'>$payload->vehicle</span>" : ''; 
-                    $html .= "$payload->title</div>";
-                    if ($payload->category) { $html .= "<div class='subtext category'>$payload->category</div>"; }
-                    if ($payload->location) { $html .= "<div class='subtext location'>$payload->location</div>"; }
-                    if ($payload->description) { $html .= "<div class='subtext description'>$payload->description</div>"; }
+                    $html .= self::GenerateHtmlOfPayload($payload);
 
                     // time-info ----------------------------------------------------------------------------
                     $html .= "<div class='timeinfo'>$timeInfo</div>";
@@ -1163,12 +1153,7 @@ class UserInterface
                     $html .= $adminView ? "<button onclick=\"WIM.EDITOR.taskEditor.edit($entry->ID, $encodedPayload, $encodedDateStart, $encodedTimeStart, $encodedDateEnd, $encodedTimeEnd, $showUpcoming);\">&nbsp;</button>" : '';
                     
                     // payload ------------------------------------------------------------------
-                    $html .= "<div class='title'>";
-                    $html .= $payload->vehicle ? "<span class='vehicle'>$payload->vehicle</span>" : ''; 
-                    $html .= "$payload->title</div>";
-                    if ($payload->category) { $html .= "<div class='subtext category'>$payload->category</div>"; }
-                    if ($payload->location) { $html .= "<div class='subtext location'>$payload->location</div>"; }
-                    if ($payload->description) { $html .= "<div class='subtext description'>$payload->description</div>"; }
+                    $html .= self::GenerateHtmlOfPayload($payload);
 
                     // time-info ----------------------------------------------------------------------------
                     $html .= $timeInfo ? "<div class='timeinfo'>$timeInfo</div>" : '';
@@ -1202,12 +1187,7 @@ class UserInterface
                     
 
                     // payload ------------------------------------------------------------------
-                    $html .= "<div class='title'>";
-                    $html .= $payload->vehicle ? "<span class='vehicle'>$payload->vehicle</span>" : ''; 
-                    $html .= "$payload->title</div>";
-                    if ($payload->category) { $html .= "<div class='subtext category'>$payload->category</div>"; }
-                    if ($payload->location) { $html .= "<div class='subtext location'>$payload->location</div>"; }
-                    if ($payload->description) { $html .= "<div class='subtext description'>$payload->description</div>"; }
+                    $html .= self::GenerateHtmlOfPayload($payload);
 
                     // time-info ----------------------------------------------------------------------------
                     $timeInfo = $adminView ? self::GetFrienlyRecurringDescription($entry->CYCL_TYPE, $entry->CYCL_WEEKDAY, $entry->CYCL_DOM) : '';
@@ -1221,12 +1201,7 @@ class UserInterface
                     $html .= "<li class='warn'>";
 
                     // payload ------------------------------------------------------------------
-                    $html .= "<div class='title'>";
-                    $html .= $payload->vehicle ? "<span class='vehicle'>$payload->vehicle</span>" : ''; 
-                    $html .= "$payload->title</div>";
-                    if ($payload->category) { $html .= "<div class='subtext category'>$payload->category</div>"; }
-                    if ($payload->location) { $html .= "<div class='subtext location'>$payload->location</div>"; }
-                    if ($payload->description) { $html .= "<div class='subtext description'>$payload->description</div>"; }
+                    $html .= self::GenerateHtmlOfPayload($payload);
                     break;
 
             }
@@ -1241,6 +1216,33 @@ class UserInterface
 
         return $html;
 
+    }
+
+    private static function GenerateHtmlOfPayload($payload): string
+    {
+
+        $html = "";
+        $anyMeta = isset($payload->category) || isset($payload->location);
+        $duoMeta = isset($payload->category) && isset($payload->location);
+        $hasVehicle = isset($payload->vehicle);
+
+        // title-text
+        $html .= "<div class='title".($hasVehicle ? " vehicle'>" : "'>");
+        $html .= $hasVehicle ? "<span>$payload->vehicle</span>" : ''; 
+        $html .= "$payload->title</div>";
+
+        // meta-text
+        if ($anyMeta)
+        {
+            $html .= "<div class='subtext meta'>";
+            $html .= "{$payload->category}";
+            $html .= $duoMeta ? " ({$payload->location})" : "{$payload->location}";
+            $html .= "</div>";
+        }
+        
+        if ($payload->description) { $html .= "<div class='subtext description'>$payload->description</div>"; }
+
+        return $html;
     }
 
     public static function GenerateHtmlOfUsersList($users)

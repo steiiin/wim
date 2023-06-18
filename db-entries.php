@@ -75,9 +75,219 @@ interface ModuleWim {
     public function getAutoTag();
     public function getAdminEntry();
     public function getAdminSettingsLink();
+    public function getAdminSettingsHtml();
+    public function getAdminSettingsScript();
     public function run($cli = true);
 
 }
+class ModulesWim {
+
+    public static function Create($users, $entries, $settings) 
+    {
+        return
+        [
+            new ModuleAbfall($users, $entries, $settings),
+            new ModuleMalteser($users, $entries, $settings),
+            new ModuleNina($users, $entries, $settings)
+        ];
+    }
+    public static function ApiHookSettings()
+    {
+
+        $module = filter_input(INPUT_GET, 'm', FILTER_SANITIZE_STRING);
+        switch ($module)
+        {
+            case 'ABFALL':
+
+                // get parameter
+                $link = filter_input(INPUT_POST, 'auto-abfalllink', FILTER_SANITIZE_STRING);
+
+                // prepare connectors
+                $settings = new Settings();
+                $beforeChange = $settings->Get(ModuleAbfall::Link);
+
+                // save parameter
+                if ($link === false || preg_match('/^https:\/\/www\.zaoe\.de\/kalender\/ical\/([0-9\/\-_]+)$/', $link) !== 1 || !$settings->Set(ModuleAbfall::Link, $link, true)) 
+                { 
+                    Auth::redirectToAdminWithMessage("{
+                        title: 'Fehler beim Speichern',
+                        description: 'Der Abfalllink konnte nicht gespeichert werden. Ist er im richtigen Format?',
+                        showWarning: true,
+                        mode: 'ok',
+                        actionPositive: null
+                    }", 'module');
+                }
+                    
+                // update if changed
+                if ($beforeChange != $link)
+                {
+                    $entries = new Entries();
+                    $module = new ModuleAbfall(null, $entries, $settings);
+                    if (!$module->run(false))
+                    {
+                        Auth::redirectToAdminWithMessage("{
+                            title: 'Fehler beim Abruf',
+                            description: 'Der Abfallkalender konnte von diesem Link nicht hinzugefügt werden. Ist es der richtige?',
+                            showWarning: true,
+                            mode: 'ok',
+                            actionPositive: null
+                        }", 'module');
+                    }
+                }
+                Auth::redirectToAdmin('modules');
+                break;
+
+            case 'MALTESER':
+                $tool = filter_input(INPUT_GET, 'a', FILTER_SANITIZE_STRING);
+                $update = false;
+
+                switch ($tool)
+                {
+                    case 'ENDPOINT':
+
+                        // get parameter
+                        $endpoint = filter_input(INPUT_POST, 'auto-malteser-endpoint', FILTER_SANITIZE_STRING);
+
+                        // prepare connectors
+                        $settings = new Settings();
+                        $beforeChange = $settings->Get(ModuleMalteser::EndPoint);
+
+                        // save parameter
+                        if ($endpoint === false || !$settings->Set(ModuleMalteser::EndPoint, $endpoint, true)) 
+                        { 
+                            Auth::redirectToAdminWithMessage("{
+                                title: 'Fehler beim Speichern',
+                                description: 'Der Endpunkt-Link konnte nicht gespeichert werden. Ist er im richtigen Format?',
+                                showWarning: true,
+                                mode: 'ok',
+                                actionPositive: null
+                            }", 'module');
+                        }
+
+                        $update = $beforeChange != $endpoint;
+                        break;
+
+                    case 'CREDENTIALS':
+
+                        // get parameter
+                        $username = filter_input(INPUT_POST, 'auto-malteser-user', FILTER_SANITIZE_STRING);
+                        $password = filter_input(INPUT_POST, 'auto-malteser-pass', FILTER_SANITIZE_STRING);
+
+                        // prepare connectors
+                        $settings = new Settings();
+                        $beforeUser = $settings->Get(ModuleMalteser::Username);
+                        $beforePass = $settings->Get(ModuleMalteser::Password);
+
+                        // save parameter
+                        if ($username === false || $password === false || 
+                            !$settings->Set(ModuleMalteser::Username, $username, true) ||
+                            !$settings->Set(ModuleMalteser::Password, $password, true)) 
+                        { 
+                            Auth::redirectToAdminWithMessage("{
+                                title: 'Fehler beim Speichern',
+                                description: 'Die Zugangsdaten konnten nicht gespeichert werden. Sind sie im richtigen Format?',
+                                showWarning: true,
+                                mode: 'ok',
+                                actionPositive: null
+                            }", 'module');
+                        }
+
+                        $update = $beforeUser != $username || $beforePass != $password;
+                        break;
+
+                    default:
+                        Auth::replyErrorBadRequest();
+                }
+
+                // update if changed
+                if ($update)
+                {
+                    $entries = new Entries();
+                    $module = new ModuleMalteser(null, $entries, $settings);
+                    if (!$module->run(false))
+                    {
+                        Auth::redirectToAdminWithMessage("{
+                            title: 'Fehler beim Abruf',
+                            description: 'Der Malteserkalender konnte nicht abgerufen werden. Ist der Link der Richtige und die Zugangsdaten korrekt?',
+                            showWarning: true,
+                            mode: 'ok',
+                            actionPositive: null
+                        }", 'module');
+                    }
+                }
+                Auth::redirectToAdmin('modules');
+                break;
+
+            case 'NINA':
+                
+                // get parameter
+                $ars = filter_input(INPUT_POST, 'auto-ars', FILTER_SANITIZE_STRING);
+
+                // prepare connectors
+                $settings = new Settings();
+
+                // save parameter
+                if ($ars === false || preg_match('/^\d{12}$/', $ars) !== 1 || !$settings->Set(ModuleNina::ARS, $ars, true)) 
+                { 
+                    Auth::redirectToAdminWithMessage("{
+                        title: 'Fehler beim Speichern',
+                        description: 'Der Schlüssel konnte nicht gespeichert werden. Ist er im richtigen Format?',
+                        showWarning: true,
+                        mode: 'ok',
+                        actionPositive: null
+                    }", 'module');
+                }
+                    
+                Auth::redirectToAdmin('modules');
+                break;
+
+            default:
+                Auth::replyErrorBadRequest();
+        }
+
+    }
+    public static function ApiHookCron()
+    {
+
+        $module = filter_input(INPUT_GET, 'm', FILTER_SANITIZE_STRING);
+        switch ($module)
+        {
+            case 'ABFALL':
+
+                $users = new Users();
+                $entries = new Entries();
+                $settings = new Settings();
+                $module = new ModuleAbfall($users, $entries, $settings);
+                $module->run();
+                break;
+
+            case 'MALTESER':
+
+                $users = new Users();
+                $entries = new Entries();
+                $settings = new Settings();
+                $module = new ModuleMalteser($users, $entries, $settings);
+                $module->run();
+                break;
+
+            case 'NINA':
+
+                $users = new Users();
+                $entries = new Entries();
+                $settings = new Settings();
+                $module = new ModuleNina($users, $entries, $settings);
+                $module->run();
+                break;
+
+            default:
+                Auth::replyErrorBadRequest();
+
+        }
+
+    }
+
+}
+
 
 // MainClasses ####################################################################################
 class Entries

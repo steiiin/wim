@@ -98,6 +98,64 @@ class ModuleAbfall implements ModuleWim {
 
         return "WIM.EDITOR.moduleAbfallEditor.create('$link', '$mostRecent')";
     }
+
+    public function getAdminSettingsHtml()
+    {
+        return <<<EOT
+
+        <div id="editorwindow-moduleAbfall" class="editorWindow">
+            <form id="editor-moduleAbfall-form" action="api.php?action=SETTINGS-MODULE&m=ABFALL" method="post" name="form">
+                <a class="close" onclick="WIM.EDITOR.closeEditor('moduleAbfall');">×</a>
+
+                <h2>Abfallkalender - Einstellungen</h2>
+                <h3 id="editor-moduleAbfall-meta" style="margin: 0 0 15px 0;"></h3>
+
+                <p>Hier kannst du den Link zum Abfallkalender ändern. Unterstützt wird allerdings nur ein Link der ZAOE.</p>
+
+                <h3>Link zum elektronischen Abfallkalender</h3>
+                <input id="editor-moduleAbfall-input-abfalllink" name="auto-abfalllink" placeholder="Url für Abfallkalender (https://www.zaoe.de)" type="text"
+                    oninput="WIM.EDITOR.moduleAbfallEditor.validate()">
+
+                <button id="editor-moduleAbfall-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;"
+                    onclick="WIM.EDITOR.disableUI(true)">Speichern</button>
+            </form>
+        </div>
+
+        EOT;
+    }
+
+    public function getAdminSettingsScript()
+    {
+        return <<<EOT
+
+        WIM.EDITOR.moduleAbfallEditor =
+        {
+
+            create: function (link, lastUpdate) {
+                WIM.FUNC.FormHelper.domSetInnerText('editor-moduleAbfall-meta', 'Bearbeitet: ' + lastUpdate)
+                WIM.FUNC.FormHelper.inputSetValue('editor-moduleAbfall-input-abfalllink', link)
+
+                WIM.EDITOR.moduleAbfallEditor.validate()
+                WIM.EDITOR.showEditor('moduleAbfall')
+            },
+            validate: function () {
+                let isValid = true
+
+                isValid = WIM.FUNC.FormHelper.inputIsEmpty('editor-moduleAbfall-input-abfalllink') ? false : isValid
+                isValid = (/^https:\/\/www\.zaoe\.de\/kalender\/ical\/([0-9\/\-_]+)$/).test(WIM.FUNC.FormHelper.inputGetValue('editor-moduleAbfall-input-abfalllink')) ? isValid : false
+
+                WIM.FUNC.FormHelper.domEnabled('editor-moduleAbfall-btn-save', isValid)
+                WIM.EDITOR.calculateEditorPosition()
+            },
+
+            invokeRefresh: function () {
+
+            }
+
+        };
+
+        EOT;
+    }
     
     public function run($cli = true) 
     {

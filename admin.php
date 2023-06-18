@@ -16,10 +16,8 @@
     $users = new Users();
     $entries = new Entries();
     $settings = new Settings();
-
-    $moduleAbfall = new ModuleAbfall($users, $entries, $settings);
-    $moduleMalteser = new ModuleMalteser($users, $entries, $settings);
-    $moduleNina = new ModuleNina($users, $entries, $settings);
+    $modules = ModulesWim::Create($users, $entries, $settings);
+    
     
 ?>
 <!doctype html>
@@ -51,7 +49,7 @@
     <title>WIM-Admin</title>
 
     <!-- Startup -->
-    <script src='bin/ui.js'></script>
+    <script src='ui.js'></script>
 
     <script type="text/javascript">
 
@@ -100,7 +98,7 @@
     <!-- EDITOR -->
     <div id="editorContainer" class="editorContainer">
 
-        <!-- Account -->
+        <!-- account -->
         <div id="editorwindow-account" class="editorWindow">
             <form id="editor-account-form" action="api.php" method="post" name="form">
                 <a class="close" onclick="WIM.EDITOR.closeEditor('account');">×</a>
@@ -172,7 +170,7 @@
             </form>
         </div>
 
-        <!-- Benutzer -->
+        <!-- users -->
         <div id="editorwindow-user" class="editorWindow">
             <form id="editor-user-form" action="api.php?action=USER-EDIT" method="post" name="form">
                 <a class="close" onclick="WIM.EDITOR.closeEditor('user');">×</a>
@@ -198,7 +196,7 @@
             </form>
         </div>
 
-        <!-- Einstellungen -->
+        <!-- settings -->
         <div id="editorwindow-settings" class="editorWindow">
             <form id="editor-settings-form" action="api.php?action=SETTINGS" method="post" name="form">
                 <a class="close" onclick="WIM.EDITOR.closeEditor('settings');">×</a>
@@ -302,93 +300,15 @@
             </div>
         </div>
 
-        <!-- Module - Einstellungen -->
-        <div id="editorwindow-moduleAbfall" class="editorWindow">
-            <form id="editor-moduleAbfall-form" action="api.php?action=SETTINGS-MODULE&m=ABFALL" method="post" name="form">
-                <a class="close" onclick="WIM.EDITOR.closeEditor('moduleAbfall');">×</a>
+        <!-- include modulesettings -->
+        <?php
 
-                <h2>Abfallkalender - Einstellungen</h2>
-                <h3 id="editor-moduleAbfall-meta" style="margin: 0 0 15px 0;"></h3>
+            foreach ($modules as $module) 
+            {
+                echo $module->getAdminSettingsHtml();
+            }
 
-                <p>Hier kannst du den Link zum Abfallkalender ändern. Unterstützt wird allerdings nur ein Link der ZAOE.</p>
-
-                <h3>Link zum elektronischen Abfallkalender</h3>
-                <input id="editor-moduleAbfall-input-abfalllink" name="auto-abfalllink" placeholder="Url für Abfallkalender (https://www.zaoe.de)" type="text"
-                    oninput="WIM.EDITOR.moduleAbfallEditor.validate()">
-
-                <button id="editor-moduleAbfall-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;"
-                    onclick="WIM.EDITOR.disableUI(true)">Speichern</button>
-            </form>
-        </div>
-        <div id="editorwindow-moduleMaltesercloud" class="editorWindow">
-            <form id="editor-moduleMaltesercloud-form" action="api.php?action=SETTINGS-MODULE-MALTESER" method="post" name="form">
-                <a class="close" onclick="WIM.EDITOR.closeEditor('moduleMaltesercloud');">×</a>
-
-                <h2>Maltesercloud - Einstellungen</h2>
-                <h3 id="editor-moduleMaltesercloud-meta" style="margin: 0 0 15px 0;"></h3>
-
-                <p>Hier kannst du die Daten für das Sharepoint ändern.</p>
-
-                <div id="editor-moduleMaltesercloud-actiontool" class="tools tools-full" tool-action="" style="margin-bottom: 10px;" >
-
-                    <button id="editor-moduleMaltesercloud-action-endpoint" type="button"
-                        onclick="WIM.EDITOR.moduleMalteserEditor.changeState('endpoint'); WIM.EDITOR.moduleMalteserEditor.validate()">
-                        <img src="res/ic_btn_onlystart.svg" style="width:20px;">
-                        <span>Terminkalender ändern</span>
-                    </button>
-
-                    <button id="editor-moduleMaltesercloud-action-credentials" type="button"
-                        onclick="WIM.EDITOR.moduleMalteserEditor.changeState('credentials'); WIM.EDITOR.moduleMalteserEditor.validate()">
-                        <img src="res/ic_btn_password.svg" style="width:20px">
-                        <span>Zugangsdaten ändern</span>
-                    </button>
-
-                    <button id="editor-moduleMaltesercloud-action-cancelcurrent" type="button"
-                        onclick="WIM.EDITOR.moduleMalteserEditor.changeState(''); WIM.EDITOR.moduleMalteserEditor.validate()">
-                        <img src="res/ic_btn_back.svg" style="width:20px">
-                        <span>Zurück zum Menü</span>
-                    </button>
-
-                </div>
-
-                <div id="editor-moduleMaltesercloud-actioncontainer-endpoint">
-
-                    <input id="editor-moduleMaltesercloud-input-endpoint" name="auto-malteser-endpoint" placeholder="https://maltesercloud.sharepoint.com/sites/[...]/_api/lists(guid'[...]')" type="text"
-                        oninput="WIM.EDITOR.moduleMalteserEditor.validate()">
-
-                </div>
-                <div id="editor-moduleMaltesercloud-actioncontainer-credentials">
-
-                    <input id="editor-moduleMaltesercloud-input-user" name="auto-malteser-user" placeholder="Benutzername (vorname.nachname@malteser.org)" type="text"
-                        oninput="WIM.EDITOR.moduleMalteserEditor.validate()">
-                    <input id="editor-moduleMaltesercloud-input-pass" name="auto-malteser-pass" placeholder="Neues Passwort" type="password"
-                        oninput="WIM.EDITOR.moduleMalteserEditor.validate()">
-                        <h3 id="editor-moduleMaltesercloud-input-cred-error" class="error">Der Benutzername ist im falschen Format.</h3>
-
-                </div>
-
-                <button id="editor-moduleMaltesercloud-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;"
-                    onclick="WIM.EDITOR.disableUI(true)">Speichern</button>
-            </form>
-        </div>
-        <div id="editorwindow-moduleNina" class="editorWindow">
-            <form id="editor-moduleNina-form" action="api.php?action=SETTINGS-MODULE&m=NINA" method="post" name="form">
-                <a class="close" onclick="WIM.EDITOR.closeEditor('moduleNina');">×</a>
-
-                <h2>NINA - Einstellungen</h2>
-                <h3 id="editor-moduleNina-meta" style="margin: 0 0 15px 0;"></h3>
-
-                <p>Für das NINA-Warnportal muss ein Regionalschlüssel angegeben werden.</p>
-
-                <h3>Amtlicher Regionalschlüssel</h3>
-                <input id="editor-moduleNina-input-ars" name="auto-ars" placeholder="Amtlicher Regionalschlüssel z.B. 146270000000" type="text"
-                    oninput="this.value=this.value.trim();WIM.EDITOR.moduleNinaEditor.validate()">
-                <a class="link" href="https://www.xrepository.de/api/xrepository/urn:de:bund:destatis:bevoelkerungsstatistik:schluessel:rs_2021-07-31/download/Regionalschl_ssel_2021-07-31.json" target="_blank">Schlüssel finden (letzte 7 Stellen nullen)</a>
-
-                <button id="editor-moduleNina-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;"
-                    onclick="WIM.EDITOR.disableUI(true)">Speichern</button>
-            </form>
-        </div>
+        ?>
 
         <!-- Entry: Info -->
         <div id="editorwindow-info" class="editorWindow">
@@ -748,8 +668,6 @@
             </form>
         </div>
 
-
-
     </div>
 
     <!-- LAYOUT -->
@@ -876,21 +794,26 @@
         <?php
 
             // create module-html
-            $listHtml = '';
-            $listHtml .= $moduleAbfall->getAdminEntry();
-            $listHtml .= $moduleMalteser->getAdminEntry();
-            $listHtml .= $moduleNina->getAdminEntry();
+            $moduleHtml = "";
+            foreach ($modules as $module)
+            {
+                $moduleHtml .= $module->getAdminEntry();
+            }
 
+            // create module-options
             $moduleOptions = [];
             if ($_SESSION['IsAdmin']) 
             { 
-                $moduleOptions[] = [ 'title' => $moduleAbfall->getName(), 'onclick' => $moduleAbfall->getAdminSettingsLink(), 'icon' => 'ic_action_settings.svg' ];
-                $moduleOptions[] = [ 'title' => $moduleMalteser->getName(), 'onclick' => $moduleMalteser->getAdminSettingsLink(), 'icon' => 'ic_action_settings.svg' ];
-                $moduleOptions[] = [ 'title' => $moduleNina->getName(), 'onclick' => $moduleNina->getAdminSettingsLink(), 'icon' => 'ic_action_settings.svg' ];
+                foreach ($modules as $module)
+                {
+                    $moduleOptions[] = [ 'title' => $module->getName(),
+                                         'onclick' => $module->getAdminSettingsLink(),
+                                         'icon' => 'ic_action_settings.svg' ];
+                }
             }
 
             // generate group for modules
-            $html = UserInterface::GenerateHtmlOfGroup('modules', 'Automatische Module', false, $listHtml, $moduleOptions);
+            $html = UserInterface::GenerateHtmlOfGroup('modules', 'Automatische Module', false, $moduleHtml, $moduleOptions);
             $html = str_replace("class='tools'", "class='tools full-width'", $html);
             echo $html;
 
@@ -920,7 +843,13 @@
 
 <script type="text/javascript"><?php
 
-    // IsFirstAccess: Zum Passwort-Ändern auffordern
+    // import module-scripts
+    foreach ($modules as $module)
+    {
+        echo $module->getAdminSettingsScript();
+    }
+
+    // show password-nag if IsFirstAccess set
     if (isset($_SESSION['IsFirstAccess']) && $_SESSION['IsFirstAccess'] && !isset($_SESSION['WimFirstAccessNagged'])) {
 
         echo "WIM.EDITOR.showMessage({
@@ -935,7 +864,7 @@
 
     }
 
-    // Dialog ausführen
+    // show messagebox
     if (isset($_GET['msg']) && isset($_SESSION['MESSAGEDATA']))
     {
         // inject message-code

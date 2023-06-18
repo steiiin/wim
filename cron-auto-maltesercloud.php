@@ -97,7 +97,136 @@ class ModuleMalteser implements ModuleWim {
         
         return "WIM.EDITOR.moduleMalteserEditor.create(&quot;" . str_replace("'", '&#39;', $endpoint) . "&quot;, '$username')";
     }
-    
+    public function getAdminSettingsHtml()
+    {
+        return <<<EOT
+
+        <div id="editorwindow-moduleMaltesercloud" class="editorWindow">
+            <form id="editor-moduleMaltesercloud-form" action="api.php?action=SETTINGS-MODULE-MALTESER" method="post" name="form">
+                <a class="close" onclick="WIM.EDITOR.closeEditor('moduleMaltesercloud');">×</a>
+
+                <h2>Maltesercloud - Einstellungen</h2>
+                <h3 id="editor-moduleMaltesercloud-meta" style="margin: 0 0 15px 0;"></h3>
+
+                <p>Hier kannst du die Daten für das Sharepoint ändern.</p>
+
+                <div id="editor-moduleMaltesercloud-actiontool" class="tools tools-full" tool-action="" style="margin-bottom: 10px;" >
+
+                    <button id="editor-moduleMaltesercloud-action-endpoint" type="button"
+                        onclick="WIM.EDITOR.moduleMalteserEditor.changeState('endpoint'); WIM.EDITOR.moduleMalteserEditor.validate()">
+                        <img src="res/ic_btn_onlystart.svg" style="width:20px;">
+                        <span>Terminkalender ändern</span>
+                    </button>
+
+                    <button id="editor-moduleMaltesercloud-action-credentials" type="button"
+                        onclick="WIM.EDITOR.moduleMalteserEditor.changeState('credentials'); WIM.EDITOR.moduleMalteserEditor.validate()">
+                        <img src="res/ic_btn_password.svg" style="width:20px">
+                        <span>Zugangsdaten ändern</span>
+                    </button>
+
+                    <button id="editor-moduleMaltesercloud-action-cancelcurrent" type="button"
+                        onclick="WIM.EDITOR.moduleMalteserEditor.changeState(''); WIM.EDITOR.moduleMalteserEditor.validate()">
+                        <img src="res/ic_btn_back.svg" style="width:20px">
+                        <span>Zurück zum Menü</span>
+                    </button>
+
+                </div>
+
+                <div id="editor-moduleMaltesercloud-actioncontainer-endpoint">
+
+                    <input id="editor-moduleMaltesercloud-input-endpoint" name="auto-malteser-endpoint" placeholder="https://maltesercloud.sharepoint.com/sites/[...]/_api/lists(guid'[...]')" type="text"
+                        oninput="WIM.EDITOR.moduleMalteserEditor.validate()">
+
+                </div>
+                <div id="editor-moduleMaltesercloud-actioncontainer-credentials">
+
+                    <input id="editor-moduleMaltesercloud-input-user" name="auto-malteser-user" placeholder="Benutzername (vorname.nachname@malteser.org)" type="text"
+                        oninput="WIM.EDITOR.moduleMalteserEditor.validate()">
+                    <input id="editor-moduleMaltesercloud-input-pass" name="auto-malteser-pass" placeholder="Neues Passwort" type="password"
+                        oninput="WIM.EDITOR.moduleMalteserEditor.validate()">
+                        <h3 id="editor-moduleMaltesercloud-input-cred-error" class="error">Der Benutzername ist im falschen Format.</h3>
+
+                </div>
+
+                <button id="editor-moduleMaltesercloud-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;"
+                    onclick="WIM.EDITOR.disableUI(true)">Speichern</button>
+            </form>
+        </div>
+
+        EOT;
+    }
+    public function getAdminSettingsScript()
+    {
+        return <<<EOT
+
+        WIM.EDITOR.moduleMalteserEditor = 
+        {
+
+            create: function (endpoint, username) {
+
+                WIM.FUNC.FormHelper.formSetToolState('editor-moduleMaltesercloud-actiontool', 'tool-action', '')
+                WIM.FUNC.FormHelper.inputSetValue('editor-moduleMaltesercloud-input-endpoint', endpoint)
+                WIM.FUNC.FormHelper.inputSetValue('editor-moduleMaltesercloud-input-user', username)
+                WIM.FUNC.FormHelper.inputSetValue('editor-moduleMaltesercloud-input-pass', '')
+
+                WIM.EDITOR.moduleMalteserEditor.validate()
+                WIM.EDITOR.showEditor('moduleMaltesercloud')
+
+            },
+            validate: function () {
+
+                let isValid = true
+
+                // tool state
+                let showToolEndpoint = WIM.FUNC.FormHelper.formGetToolState('editor-moduleMaltesercloud-actiontool', 'tool-action', '') == 'endpoint'
+                let showToolCredentials = WIM.FUNC.FormHelper.formGetToolState('editor-moduleMaltesercloud-actiontool', 'tool-action', '') == 'credentials'
+                let showToolBack = showToolEndpoint || showToolCredentials
+                let showToolMenu = !showToolBack
+
+                // visibility
+                WIM.FUNC.FormHelper.domVisibility('editor-moduleMaltesercloud-action-endpoint', showToolMenu)
+                WIM.FUNC.FormHelper.domVisibility('editor-moduleMaltesercloud-action-credentials', showToolMenu);
+                WIM.FUNC.FormHelper.domVisibility('editor-moduleMaltesercloud-action-cancelcurrent', showToolBack);
+
+                WIM.FUNC.FormHelper.domVisibility('editor-moduleMaltesercloud-actioncontainer-endpoint', showToolEndpoint);
+                if (showToolEndpoint) {
+                    WIM.FUNC.FormHelper.formSetAction('editor-moduleMaltesercloud-form', 'api.php?action=SETTINGS-MODULE&m=MALTESER&a=ENDPOINT')
+                    isValid = WIM.FUNC.FormHelper.inputIsEmpty('editor-moduleMaltesercloud-input-endpoint') ? false : isValid
+                }
+
+                WIM.FUNC.FormHelper.domVisibility('editor-moduleMaltesercloud-actioncontainer-credentials', showToolCredentials);
+                if (showToolCredentials) {
+                    WIM.FUNC.FormHelper.formSetAction('editor-moduleMaltesercloud-form', 'api.php?action=SETTINGS-MODULE&m=MALTESER&a=CREDENTIALS')
+
+                    isValid = WIM.FUNC.FormHelper.inputIsEmpty('editor-moduleMaltesercloud-input-user') ? false : isValid
+                    isValid = WIM.FUNC.FormHelper.inputIsEmpty('editor-moduleMaltesercloud-input-pass') ? false : isValid
+
+                    if ((/^([a-z])+(\.)([a-z])+(([a-z])+([-])?)*([a-z])+([0-9])?@malteser\.org$/i).test(WIM.FUNC.FormHelper.inputGetValue('editor-moduleMaltesercloud-input-user', '#'))) {
+                        WIM.FUNC.FormHelper.domVisibility('editor-moduleMaltesercloud-input-cred-error', false)
+                    }
+                    else {
+                        isValid = false
+                        WIM.FUNC.FormHelper.domVisibility('editor-moduleMaltesercloud-input-cred-error', true)
+                    }
+                }
+
+                // setup editor
+                WIM.FUNC.FormHelper.domVisibility('editor-moduleMaltesercloud-btn-save', showToolBack);
+                WIM.FUNC.FormHelper.domEnabled('editor-moduleMaltesercloud-btn-save', isValid);
+
+                WIM.EDITOR.calculateEditorPosition();
+
+            },
+
+            changeState: function (value) {
+                WIM.FUNC.FormHelper.formSetToolState('editor-moduleMaltesercloud-actiontool', 'tool-action', value)
+            },
+
+        };
+
+        EOT;
+    }
+
     public function run($cli = true) 
     {
 

@@ -64,6 +64,65 @@ class ModuleNina implements ModuleWim {
         $ars = $this->settings->Get(self::ARS);
         return "WIM.EDITOR.moduleNinaEditor.create('$ars')";
     }
+    public function getAdminSettingsHtml()
+    {
+        return <<<EOT
+
+        <div id="editorwindow-moduleNina" class="editorWindow">
+            <form id="editor-moduleNina-form" action="api.php?action=SETTINGS-MODULE&m=NINA" method="post" name="form">
+                <a class="close" onclick="WIM.EDITOR.closeEditor('moduleNina');">×</a>
+
+                <h2>NINA - Einstellungen</h2>
+                <h3 id="editor-moduleNina-meta" style="margin: 0 0 15px 0;"></h3>
+
+                <p>Für das NINA-Warnportal muss ein Regionalschlüssel angegeben werden.</p>
+
+                <h3>Amtlicher Regionalschlüssel</h3>
+                <input id="editor-moduleNina-input-ars" name="auto-ars" placeholder="Amtlicher Regionalschlüssel z.B. 146270000000" type="text"
+                    oninput="this.value=this.value.trim();WIM.EDITOR.moduleNinaEditor.validate()">
+                <a class="link" href="https://www.xrepository.de/api/xrepository/urn:de:bund:destatis:bevoelkerungsstatistik:schluessel:rs_2021-07-31/download/Regionalschl_ssel_2021-07-31.json" target="_blank">Schlüssel finden (letzte 7 Stellen nullen)</a>
+
+                <button id="editor-moduleNina-btn-save" class="btn btn-input" type="submit" style="margin-top:10px;"
+                    onclick="WIM.EDITOR.disableUI(true)">Speichern</button>
+            </form>
+        </div>
+
+        EOT;
+    }
+    public function getAdminSettingsScript()
+    {
+        return <<<EOT
+
+        WIM.EDITOR.moduleNinaEditor = 
+        {
+
+            create: function (ars) {
+                WIM.FUNC.FormHelper.inputSetValue('editor-moduleNina-input-ars', ars)
+
+                WIM.EDITOR.moduleNinaEditor.validate()
+                WIM.EDITOR.showEditor('moduleNina')
+            },
+            validate: function () {
+                let isValid = true
+
+                let sanitizedValue = WIM.FUNC.FormHelper.inputGetValue('editor-moduleNina-input-ars').replace(/\D/g, '') // Remove non-digit characters
+                WIM.FUNC.FormHelper.inputSetValue('editor-moduleNina-input-ars', sanitizedValue)
+
+                isValid = WIM.FUNC.FormHelper.inputIsEmpty('editor-moduleNina-input-ars') ? false : isValid
+                isValid = (/^\d{12}$/).test(WIM.FUNC.FormHelper.inputGetValue('editor-moduleNina-input-ars')) ? isValid : false
+
+                WIM.FUNC.FormHelper.domEnabled('editor-moduleNina-btn-save', isValid)
+                WIM.EDITOR.calculateEditorPosition()
+            },
+
+            invokeRefresh: function () {
+
+            }
+
+        };
+
+        EOT;
+    }
     
     public function run($cli = true) 
     {

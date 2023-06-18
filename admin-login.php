@@ -64,7 +64,7 @@
     <meta name="theme-color" content="#ffffff">
 
     <!-- Startup -->
-    <script src='bin/ui.js'></script>
+    <script src='ui.js'></script>
 
     <script type="text/javascript">
 

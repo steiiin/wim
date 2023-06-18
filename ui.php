@@ -37,7 +37,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
 
     <!-- Startup -->
-    <script src="bin/ui.js"></script>
+    <script src="ui.js"></script>
     <script src="bin/lib-suncalc.js"></script>
 
     <script type="text/javascript">

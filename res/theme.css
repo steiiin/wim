@@ -199,6 +199,7 @@ section .group .check {
 	background-position: 0 calc(50% - (var(--spec-today-group-list-padd) / 2));
 	background-repeat: no-repeat;
 	padding-left: calc(var(--spec-today-group-list-padd) + var(--spec-icon-size));
+	min-height: var(--spec-icon-size);
 }
 
 section .group .warn {
@@ -206,6 +207,7 @@ section .group .warn {
 	background-position: 0 calc(50% - (var(--spec-today-group-list-padd) / 2));
 	background-repeat: no-repeat;
 	padding-left: calc(var(--spec-today-group-list-padd) + var(--spec-icon-size));
+	min-height: var(--spec-icon-size);
 }
 
 section .group li .title {

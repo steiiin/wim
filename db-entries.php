@@ -7,7 +7,8 @@ require_once dirname(__FILE__) . '/cron-auto-abfall.php';
 require_once dirname(__FILE__) . '/cron-auto-maltesercloud.php';
 require_once dirname(__FILE__) . '/cron-auto-nina.php';
 
-// imports ########################################################################################
+// config #########################################################################################
+date_default_timezone_set('Europe/Berlin');
 
 // global tags ####################################################################################
 class TypeTag

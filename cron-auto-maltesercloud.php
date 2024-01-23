@@ -263,6 +263,7 @@ class ModuleMalteser implements ModuleWim {
                 // TODO: fix december MDR events (länger als 30 Tage geht nicht mehr)
                 $interval = ($event->getEventStart())->diff($event->getEventEnd());
                 if ($interval->days > 30) { continue; }
+                if (str_contains(strtolower($event->getTitle()), 'gelöscht')) { continue; }
                 
                 $dateStart = $event->getEventStart()->format('Y-m-d');
                 $timeStart = $event->getEventStart()->format('H:i');

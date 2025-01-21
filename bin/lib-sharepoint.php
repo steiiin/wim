@@ -93,25 +93,51 @@
 
         // CLIENT-ENDPOINTS #######################################################################
 
-        public function Login() 
+        public function Login()
         {
 
-            // Check Username
-            if (!$this->CheckUsername()) { return false; }
+	    // Open authenticate
+	    $open = $this->OpenAuthentication();
+	    if ($open['auth'] == 'authenticated')
+	    {
+	        echo 'Login(): Already authenticated.';
+	        return true;
+	    }
+	    else if ($open['auth'] == 'opened')
+	    {
+	        // get authentication parameters
+	        $paramsState = $this->GetAuthParams($open);
+	        if ($paramsState['ok'] === false)
+	        {
+	            echo 'Login()::GetAuthParams()// Fehler: ' . $paramsState['msg'];
+	            return false;
+	        }
 
-            // Retrieve BinaryToken
-            $bToken = $this->GetBinaryToken();
-            if ($bToken === false) { return false; }
+	        // authenticate
+	        $authState = $this->Authenticate($open);
+	        if ($paramsState['ok'] === false)
+                {
+                    echo 'Login()::Authenticate()// Fehler: ' . $authState['msg'];
+                    return false;
+                }
 
-            // Retrieve SharepointCookie
-            $sCookie = $this->GetSharepointCookie($bToken);
-            if ($sCookie === false) { return false; }
+                // get access
+                $authState = $this->GetAccess($open);
+                if ($paramsState['ok'] === false)
+                {
+                    echo 'Login()::GetAccess()// Fehler: ' . $authState['msg'];
+                    return false;
+                }
 
-            // Retrieve BearerToken
-            $bearer = $this->GetSharepointBearerToken();
-            if ($bearer === false) { return false; }
-            
-            $this->AUTHTOKEN = $bearer;
+	        return true;
+
+	    }
+	    else if ($open['auth'] == 'failure')
+	    {
+	        echo 'Login()::OpenAuthentication()// Fehler: ' . $open['msg'];
+	        return false;
+	    }
+
             return true;
 
         }
@@ -167,164 +193,348 @@
 
         // AUTHENTICATION #########################################################################
 
-        private function CheckUsername(): bool
-        {
+	private function OpenAuthentication(): Array
+	{
 
-            $checkUrl = 'https://login.microsoftonline.com/GetUserRealm.srf';
-            $headers = array('Accept' => 'application/json');
-            $body = array('login' => $this->username, 'json' => 1);
+	    $checkUrl = 'https://maltesercloud.sharepoint.com/';
+            $headers = array('Accept' => "text/html,application/xhtml+xml,application/xml;q=0.9,*/\*;q=0.8");
 
-            try
-            {
+	    $error = '';
 
-                $response = Unirest\Request::post($checkUrl, $headers, $body);
-                if ($response->code == 200) 
+	    try
+	    {
+
+	        $response = Unirest\Request::get($checkUrl, $headers);
+	        if ($response->code == 200)
                 {
 
-                    $data = json_decode($response->raw_body);
-                    return ($data->FederationBrandName == 'MalteserCloud' &&
-                            $data->NameSpaceType == 'Managed');
+	            $finalUrl = array_slice($response->headers['location'], -1)[0];
+	            if (stripos($finalUrl, 'login.microsoftonline.com') !== false)
+	            {
+	                // has to authenticate
+	                $msRequestId = $response->headers['x-ms-request-id'];
+	                $oauthId = $this->extractValue($finalUrl, '.com:443/', '/');
 
-                }
-                return false;
+	                $flowToken = $this->extractValue($response->raw_body, '"sFT":"', '"');
+	                if ($flowToken === false)
+	                {
+	                    $error = 'no flowToken (sFT) found.';
+			}
+			else
+			{
 
-            }
-            catch (Throwable $e) { return false; }
+		           $orgRequest = $this->extractValue($response->raw_body, 'fctx%3d', '\u0026');
+                           if ($orgRequest === false)
+                           {
+                               $error = 'no originalRequest (fctx) found.';
+                           }
+                           else
+                           {
 
-        }
+                              $hpgid = $this->extractValue($response->raw_body, '"hpgid":', ',');
+                              if ($hpgid === false)
+                              {
+                                  $error = 'no hpgid found.';
+                              }
+                              else
+                              {
 
-        private function GetBinaryToken()
-        {
+                                  $hpgact = $this->extractValue($response->raw_body, '"hpgact":', ',');
+                                  if ($hpgact === false)
+                                  {
+                                      $error = 'no hpgact found.';
+                                  }
+                                  else
+                                  {
 
-            $rstUrl = 'https://login.microsoftonline.com/rst2.srf';
-            $headers = array('Accept' => 'application/soap+xml; charset=utf-8', 'Content-Type' => 'application/soap+xml; charset=utf-8');
-            $body = "<?xml version='1.0' encoding='UTF-8'?>
-            <s:Envelope xmlns:s='http://www.w3.org/2003/05/soap-envelope' xmlns:a='http://www.w3.org/2005/08/addressing' xmlns:u='http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd'>
-                <s:Header>
-                    <a:Action s:mustUnderstand='1'>http://schemas.xmlsoap.org/ws/2005/02/trust/RST/Issue</a:Action>
-                    <a:ReplyTo>
-                        <a:Address>http://www.w3.org/2005/08/addressing/anonymous</a:Address>
-                    </a:ReplyTo>
-                    <a:To s:mustUnderstand='1'>https://login.microsoftonline.com/extSTS.srf</a:To>
-                    <o:Security s:mustUnderstand='1' xmlns:o='http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd'>
-                        <o:UsernameToken>
-                            <o:Username>$this->username</o:Username>
-                            <o:Password>$this->password</o:Password>
-                        </o:UsernameToken>
-                    </o:Security>
-                </s:Header>
-                <s:Body>
-                    <t:RequestSecurityToken xmlns:t='http://schemas.xmlsoap.org/ws/2005/02/trust'>
-                        <wsp:AppliesTo xmlns:wsp='http://schemas.xmlsoap.org/ws/2004/09/policy'>
-                            <a:EndpointReference>
-                                <a:Address>maltesercloud.sharepoint.com</a:Address>
-                            </a:EndpointReference>
-                        </wsp:AppliesTo>
-                        <t:KeyType>http://schemas.xmlsoap.org/ws/2005/05/identity/NoProofKey</t:KeyType>
-                        <t:RequestType>http://schemas.xmlsoap.org/ws/2005/02/trust/Issue</t:RequestType>
-                        <t:TokenType>urn:oasis:names:tc:SAML:1.0:assertion</t:TokenType>
-                    </t:RequestSecurityToken>
-                </s:Body>
-            </s:Envelope>";
+                                      $paramsCanary = $this->extractValue($response->raw_body, '"apiCanary":"', '"');
+                                      if ($paramsCanary === false)
+                                      {
+                                          $error = 'no paramsCanary (apiCanary) found.';
+                                      }
+                                      else
+                                      {
 
-            try 
-            {
-             
-                $response = Unirest\Request::post($rstUrl, $headers, $body);
-                if ($response->code == 200) {
+	                                  $loginCanary = $this->extractValue($response->raw_body, '"canary":"', '"');
+	                                  if ($loginCanary === false)
+                                          {
+                                              $error = 'no loginCanary (canary) found.';
+                                          }
+                                          else
+                                          {
 
-                    // load the token
-                    $doc = new \DOMDocument();
-                    $doc->loadXML($response->raw_body);
-                    $xpath = new \DOMXPath($doc);
-                    $xpath->registerNamespace('wsse', 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd');
-                    $tokenNode = $xpath->query('//wsse:BinarySecurityToken')->item(0);
-                    $tokenValue = $tokenNode->nodeValue;
+                                              $clientId = $this->extractValue($response->raw_body, 'client-request-id=', '\u0026');
+                                              if ($clientId === false)
+                                              {
+                                                  $error = 'no clientId (client-request-id) found.';
+                                              }
+                                              else
+                                              {
 
-                    // extract token from nodeValue
-                    preg_match('/t=([^&]+)/', $tokenValue, $matches);
-                    $result = $matches[0];
-                    if ($result == null) { return false; }
-                    return $result;
+	                                          $state = $this->extractValue($response->raw_body, '"state":"', '"');
+	                                          if ($state === false)
+	                                          {
+	                                              $error = 'no state found.';
+	                                          }
+	                                          else
+	                                          {
 
-                }
-                return false; 
-                
-            }
-            catch (Throwable $e) { return false; }
+   			    	                      return [
+	                                                  'auth' => 'opened',
+                                                          'flowToken' => $flowToken,
+                                                          'orgRequest' => $orgRequest,
+                                                          'msRequestId' => $msRequestId,
+	                                                  'hpgid' => $hpgid,
+	                                                  'hpgact' => $hpgact,
+	                                                  'paramsCanary' => $paramsCanary,
+	                                                  'loginCanary' => $loginCanary,
+	                                                  'clientId' => $clientId,
+	                                                  'oauthId' => $oauthId,
+	                                                  'state' => $state,
+                                                      ];
 
-        }
+	                                          }
 
-        private function GetSharepointCookie($binaryToken)
-        {
+	                                     }
 
-            $tenantUrl = 'https://maltesercloud.sharepoint.com/_vti_bin/idcrl.svc/';
-            $headers = array('Authorization' => "BPOSIDCRL $binaryToken",
-                             'X-IDCRL_ACCEPTED' => 't');
+                                          }
 
-            try 
-            {
-                
-                $response = Unirest\Request::get($tenantUrl, $headers);
-                if ($response->code == 200) 
-                {
+                                      }
 
-                    $SPOIDCRL = '';
-                    if (array_key_exists('set-cookie', $response->headers)) {
-                        $SPOIDCRL = substr($response->headers['set-cookie'], stripos($response->headers['set-cookie'], 'SPOIDCRL='));
-                    } 
-                    if (array_key_exists('Set-Cookie', $response->headers)) {
-                        $SPOIDCRL = substr($response->headers['Set-Cookie'], stripos($response->headers['Set-Cookie'], 'SPOIDCRL='));
+                                  }
+
+                              }
+
+                           }
+
+			}
+
                     }
-                    $SPOIDCRL = substr($SPOIDCRL, 0, stripos($SPOIDCRL, ';'));
-                    if ($SPOIDCRL == '') { return false; }
-                    return $SPOIDCRL;
+                    else if (stripos($finalUrl, 'login.microsoftonline.com') !== false)
+                    {
+                        // already logged in
+                        return [ 'auth' => 'authenticated' ];
+	            }
 
                 }
-                return false;
 
+	    }
+	    catch (Throwable $e)
+	    {
+	        // nothing to do
+	        $error = $e->message;
+	    }
+
+	    return [ 'auth' => 'failure', 'msg' => $error ];
+
+	}
+
+	private function GetAuthParams(&$open): Array
+	{
+
+	    $hpgid = $open['hpgid'];
+	    $hpgact = $open['hpgact'];
+	    $paramsCanary = $open['paramsCanary'];
+	    $msRequestId = $open['msRequestId'];
+	    $clientId = $open['clientId'];
+	    $flowToken = $open['flowToken'];
+	    $orgRequest = $open['orgRequest'];
+
+	    $checkUrl = 'https://login.microsoftonline.com/common/GetCredentialType?mkt=de';
+            $headers = [
+	        'Accept' => 'application/json',
+	        'canary' => $paramsCanary,
+	        'client-request-id' => $clientId,
+	        'hpgact' => $hpgact,
+	        'hpgid' => $hpgid,
+	        'hprequestid' => $msRequestId,
+	        'Priority' => 'u=0'
+	    ];
+	    $body = Unirest\Request\Body::Json([
+	        "username" => $this->username,
+	        "isOtherIdpSupported" => true,
+	        "checkPhones" => false,
+	        "isRemoteNGCSupported" => true,
+	        "isCookieBannerShown" => false,
+	        "isFidoSupported" => true,
+	        "originalRequest" => $orgRequest,
+	        "country" => "DE",
+	        "forceotclogin" => false,
+	        "isExternalFederationDisallowed" => false,
+	        "isRemoteConnectSupported" => false,
+	        "federationFlags" => 0,
+	        "isSignup" => false,
+	        "flowToken" => $flowToken,
+	        "isAccessPassSupported" => true,
+	        "isQrCodePinSupported" => true
+	    ]);
+
+	    $error = '';
+
+	    try
+	    {
+
+	        $response = Unirest\Request::post($checkUrl, $headers, $body);
+                if ($response->code == 200)
+	        {
+
+	            return [ 'ok' => true ];
+
+	        }
+
+	        $error = 'GetAuthParams(): status code not ok (' . $response->code . ')';
+
+	    }
+            catch (Throwable $e)
+            {
+                // nothing to do
+                $error = $e->message;
             }
-            catch (Throwable $e) { return false; }
 
-        }
+            return [ 'ok' => false, 'msg' => $error ];
 
-        private function GetSharepointBearerToken()
-        {
+	}
 
-            $tenantUrl = 'https://maltesercloud.sharepoint.com/_vti_bin/sites.asmx';
-            $headers = array('Accept' => '*/*', 'Content-Type' => 'text/xml;',
-                             'X-RequestForceAuthentication' => 'true',
-                             'X-FORMS_BASED_AUTH_ACCEPTED' => 'f',
-                             'Accept-Encoding' => 'gzip, deflate',
-                             'SOAPAction' => 'http://schemas.microsoft.com/sharepoint/soap/GetUpdatedFormDigestInformation'
-            );
-            $body = "<?xml version='1.0' encoding='utf-8'?>
-                    <soap:Envelope
-                        xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
-                        xmlns:xsd='http://www.w3.org/2001/XMLSchema'
-                        xmlns:soap='http://schemas.xmlsoap.org/soap/envelope/'>
-                        <soap:Body>
-                            <GetUpdatedFormDigestInformation xmlns='http://schemas.microsoft.com/sharepoint/soap/' />
-                        </soap:Body>
-                    </soap:Envelope>";
+	private function Authenticate(&$open): Array
+	{
+
+	    $oauthId = $open['oauthId'];
+	    $loginCanary = $open['loginCanary'];
+	    $msRequestId = $open['msRequestId'];
+	    $flowToken = $open['flowToken'];
+	    $orgRequest = $open['orgRequest'];
+
+	    $checkUrl = 'https://login.microsoftonline.com/' . $oauthId . '/login';
+	    $body = Unirest\Request\Body::Form([
+	        'i13' => 0,
+                'login' => $this->username,
+                'loginfmt' => $this->username,
+                'type' => 11,
+                'LoginOptions' => 3,
+                'passwd' => $this->password,
+                'ps' => 2,
+                'canary' => $loginCanary,
+                'ctx' => $orgRequest,
+                'hpgrequestid' => $msRequestId,
+                'flowToken' => $flowToken,
+                'NewUser' => 1,
+                'fspost' => 0,
+                'i21' => 0,
+                'CookieDisclosure' => 0,
+                'IsFidoSupported' => 1,
+                'isSignupPost' => 0,
+                'i19' => 45842
+	    ]);
+
+	    $error = '';
 
             try
             {
 
-                $response = Unirest\Request::post($tenantUrl, $headers, $body);
-                if ($response->code == 200) {
-                    
-                    $DIGEST = substr($response->raw_body, stripos($response->raw_body, '<DigestValue>') + 13);
-                    $DIGEST = substr($DIGEST, 0, stripos($DIGEST, '</DigestValue>'));
-                    if ($DIGEST != '') { return $DIGEST; }
-    
+                $response = Unirest\Request::post($checkUrl, [], $body);
+                if ($response->code == 200 && stripos($response->raw_body, 'https://maltesercloud.sharepoint.com/_forms/default.aspx') !== false)
+                {
+
+	            $open['code'] = $this->extractValue($response->raw_body, 'name="code" value="', '"');
+                    if ($open['code'] === false)
+                    {
+                        $error = 'no code found.';
+                    }
+                    else
+                    {
+
+	                $open['msRequestId'] = $response->headers['x-ms-request-id'];
+
+	                $open['idToken'] = $this->extractValue($response->raw_body, 'name="id_token" value="', '"');
+                        if ($open['idToken'] === false)
+                        {
+                            $error = 'no idToken (id_token) found.';
+                        }
+                        else
+                        {
+
+	                    $open['sessionState'] = $this->extractValue($response->raw_body, 'name="session_state" value="', '"');
+                            if ($open['sessionState'] === false)
+                            {
+                                $error = 'no sessionState (session_state) found.';
+                            }
+                            else
+                            {
+
+	                        $open['correlation'] = $this->extractValue($response->raw_body, 'name="correlation_id" value="', '"');
+                                if ($open['correlation'] === false)
+                                {
+                                    $error = 'no correlation (correlation_id) found.';
+                                }
+                                else
+                                {
+                                    return [ 'ok' => true ];
+	                    
+	                        }
+	                    }
+
+        	        }
+
+	            }
                 }
-                return false;
+
+                $error = 'status not ok (' . $response->code . ') or failure (' . $response->raw_body . ')';
 
             }
-            catch (Throwable $e) { return false; }
+            catch (Throwable $e)
+            {
+                // nothing to do
+                $error = $e->message;
+            }
 
-        }
+            return [ 'ok' => false, 'msg' => $error ];
+
+
+	}
+
+	private function GetAccess(&$open): Array
+	{
+
+	    $code = $open['code'];
+            $idToken = $open['idToken'];
+            $state = $open['state'];
+            $sessionState = $open['sessionState'];
+            $correlation = $open['correlation'];
+
+	    $checkUrl = 'https://maltesercloud.sharepoint.com/_forms/default.aspx';
+            $body = Unirest\Request\Body::Form([
+                'code' => $code,
+                'id_token' => $idToken,
+                'state' => $state,
+                'session_state' => $sessionState,
+                'correlation_id' => $correlation,
+            ]);
+
+            $error = '';
+
+	    try
+            {
+
+                $response = Unirest\Request::post($checkUrl, [], $body);
+                if ($response->code == 200)
+                {
+
+                    return [ 'ok' => true ];
+
+                }
+
+                $error = 'status code not ok (' . $response->code . ')';
+
+            }
+            catch (Throwable $e)
+            {
+                // nothing to do
+                $error = $e->message;
+            }
+
+            return [ 'ok' => false, 'msg' => $error ];
+
+	}
 
         // HELPER #################################################################################
 
@@ -336,7 +546,7 @@
                     // Failed to open the file
                     return false;
                 }
-        
+
                 // Try to truncate the file to clear its contents
                 $result = ftruncate($file, 0);
                 if ($result === false) {
@@ -344,7 +554,7 @@
                     fclose($file);
                     return false;
                 }
-        
+
                 // Close the file
                 fclose($file);
             } else {
@@ -355,220 +565,23 @@
                     return false;
                 }
             }
-        
+
             // Clearing the file was successful
             return true;
         }
 
+	private function extractValue($body, $key, $endSep)
+	{
+
+	    $needlePosition = strpos($body, $key);
+            if ($needlePosition !== false)
+            {
+	        $needlePosition = $needlePosition + strlen($key);
+	        $needleEnd = strpos($body, $endSep, $needlePosition);
+                return substr($body, $needlePosition, $needleEnd - $needlePosition);
+	    }
+	    return false;
+
+	}
+
     }
-
-////// Old Federated Login ########################################################################
-
-    // private function GetLoginSts() {
-
-    //     $return['Success'] = false;
-
-    //     $headers = array('Accept' => 'text/xml');
-    //     $query = array('login' => $this->username, 'xml' => 1);
-    //     $response = Unirest\Request::post('https://login.microsoftonline.com/GetUserRealm.srf', $headers, $query);
-    //     if ($response->code == 200) {
-
-    //         $xml = simplexml_load_string($response->raw_body);
-
-    //         if ($xml->NameSpaceType == 'Federated') {
-    //             if ($xml->FederationBrandName == 'MalteserCloud') {
-
-    //                 $return['StsAuthUrl'] = (string)$xml->STSAuthURL;
-    //                 $return['StsAuthCert'] = (string)$xml->Certificate;
-
-    //                 $return['Success'] = true;
-
-    //             }
-    //         }
-            
-    //     }
-
-    //     return $return;
-
-    // }
-
-    // private function GetLoginAssertion($stsUrl) {
-
-    //     $return["Success"] = false;
-
-    //     $adfsGuid = strtolower(sprintf('%04X%04X-%04X-%04X-%04X-%04X%04X%04X', mt_rand(0, 65535), mt_rand(0, 65535), mt_rand(0, 65535), mt_rand(16384, 20479), mt_rand(32768, 49151), mt_rand(0, 65535), mt_rand(0, 65535), mt_rand(0, 65535))); 
-    //     $adfsMsgCreated = gmdate("Y-m-d\TH:i:s.0000000\Z", time()); 
-    //     $adfsMsgExpires = gmdate("Y-m-d\TH:i:s.0000000\Z", strtotime('+10 minutes')); 
-
-    //     $soap = "<?xml version='1.0' encoding='UTF-8'>
-    //                 <s:Envelope
-    //                     xmlns:s='http://www.w3.org/2003/05/soap-envelope'
-    //                     xmlns:wsse='http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd'
-    //                     xmlns:saml='urn:oasis:names:tc:SAML:1.0:assertion'
-    //                     xmlns:wsp='http://schemas.xmlsoap.org/ws/2004/09/policy'
-    //                     xmlns:wsu='http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd'
-    //                     xmlns:wsa='http://www.w3.org/2005/08/addressing'
-    //                     xmlns:wssc='http://schemas.xmlsoap.org/ws/2005/02/sc'
-    //                     xmlns:wst='http://schemas.xmlsoap.org/ws/2005/02/trust'>
-    //                     <s:Header>
-    //                         <wsa:Action s:mustUnderstand='1'>http://schemas.xmlsoap.org/ws/2005/02/trust/RST/Issue</wsa:Action>
-    //                         <wsa:To s:mustUnderstand='1'>$stsUrl</wsa:To>
-    //                         <wsa:MessageID>$adfsGuid</wsa:MessageID>
-    //                         <ps:AuthInfo
-    //                             xmlns:ps='http://schemas.microsoft.com/Passport/SoapServices/PPCRL' Id='PPAuthInfo'>
-    //                             <ps:HostingApp>Managed IDCRL</ps:HostingApp>
-    //                             <ps:BinaryVersion>6</ps:BinaryVersion>
-    //                             <ps:UIVersion>1</ps:UIVersion>
-    //                             <ps:Cookies></ps:Cookies>
-    //                             <ps:RequestParams>AQAAAAIAAABsYwQAAAAxMDMz</ps:RequestParams>
-    //                         </ps:AuthInfo>
-    //                         <wsse:Security>
-    //                             <wsse:UsernameToken wsu:Id='user'>
-    //                                 <wsse:Username>$this->username</wsse:Username>
-    //                                 <wsse:Password>$this->password</wsse:Password>
-    //                             </wsse:UsernameToken>
-    //                             <wsu:Timestamp Id='Timestamp'>
-    //                                 <wsu:Created>$adfsMsgCreated</wsu:Created>
-    //                                 <wsu:Expires>$adfsMsgExpires</wsu:Expires>
-    //                             </wsu:Timestamp>
-    //                         </wsse:Security>
-    //                     </s:Header>
-    //                     <s:Body>
-    //                         <wst:RequestSecurityToken Id='RST0'>
-    //                             <wst:RequestType>http://schemas.xmlsoap.org/ws/2005/02/trust/Issue</wst:RequestType>
-    //                             <wsp:AppliesTo>
-    //                                 <wsa:EndpointReference>
-    //                                     <wsa:Address>urn:federation:MicrosoftOnline</wsa:Address>
-    //                                 </wsa:EndpointReference>
-    //                             </wsp:AppliesTo>
-    //                             <wst:KeyType>http://schemas.xmlsoap.org/ws/2005/05/identity/NoProofKey</wst:KeyType>
-    //                         </wst:RequestSecurityToken>
-    //                     </s:Body>
-    //                 </s:Envelope>";
-
-    //     $headers = array('Accept' => 'application/soap+xml; charset=utf-8', 'Content-Type' => 'application/soap+xml; charset=utf-8');
-    //     $response = Unirest\Request::post($stsUrl, $headers, $soap);
-    //     if ($response->code == 200) {
-
-
-    //         $assertionString = substr($response->raw_body, stripos($response->raw_body, 'RequestedSecurityToken>') + 23);
-    //         $assertionString = substr($assertionString, 0, stripos($assertionString, 'assertion>') + 10);
-            
-    //         $return['assertion'] = $assertionString;
-    //         $return['Success'] = true;
-
-    //     }
-
-    //     return $return;
-
-    // }
-
-    // private function GetLoginSharepointToken($assertionString) {
-
-    //     $return["Success"] = false;
-
-    //     $soap = "<S:Envelope
-    //                 xmlns:S='http://www.w3.org/2003/05/soap-envelope'
-    //                 xmlns:wsse='http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd'
-    //                 xmlns:wsp='http://schemas.xmlsoap.org/ws/2004/09/policy'
-    //                 xmlns:wsu='http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd'
-    //                 xmlns:wsa='http://www.w3.org/2005/08/addressing'
-    //                 xmlns:wst='http://schemas.xmlsoap.org/ws/2005/02/trust'>
-    //                 <S:Header>
-    //                     <wsa:Action S:mustUnderstand='1'>http://schemas.xmlsoap.org/ws/2005/02/trust/RST/Issue</wsa:Action>
-    //                     <wsa:To S:mustUnderstand='1'>https://login.microsoftonline.com/rst2.srf</wsa:To>
-    //                     <ps:AuthInfo
-    //                         xmlns:ps='http://schemas.microsoft.com/LiveID/SoapServices/v1' Id='PPAuthInfo'>
-    //                         <ps:BinaryVersion>5</ps:BinaryVersion>
-    //                         <ps:HostingApp>Managed IDCRL</ps:HostingApp>
-    //                     </ps:AuthInfo>
-    //                     <wsse:Security>$assertionString</wsse:Security>
-    //                 </S:Header>
-    //                 <S:Body>
-    //                     <wst:RequestSecurityToken
-    //                         xmlns:wst='http://schemas.xmlsoap.org/ws/2005/02/trust' Id='RST0'>
-    //                         <wst:RequestType>http://schemas.xmlsoap.org/ws/2005/02/trust/Issue</wst:RequestType>
-    //                         <wsp:AppliesTo>
-    //                             <wsa:EndpointReference>
-    //                                 <wsa:Address>maltesercloud.sharepoint.com</wsa:Address>
-    //                             </wsa:EndpointReference>
-    //                         </wsp:AppliesTo>
-    //                         <wsp:PolicyReference URI='MBI'/>
-    //                     </wst:RequestSecurityToken>
-    //                 </S:Body>
-    //             </S:Envelope>";
-        
-    //     $headers = array('Accept' => 'application/soap+xml; charset=utf-8', 'Content-Type' => 'application/soap+xml; charset=utf-8');
-    //     $response = Unirest\Request::post('https://login.microsoftonline.com/rst2.srf', $headers, $soap);
-    //     if ($response->code == 200) {
-
-    //         $searchPos = stripos($response->raw_body, 'binarysecuritytoken ');
-    //         $searchPos = stripos($response->raw_body, '>', $searchPos);
-
-    //         $binaryToken = substr($response->raw_body, $searchPos + 1);
-    //         $binaryToken = substr($binaryToken, 0, stripos($binaryToken, '</'));
-            
-    //         $return['binaryToken'] = html_entity_decode($binaryToken);
-    //         $return['Success'] = true;
-
-    //     }
-
-    //     return $return;
-
-    // }
-
-    // private function GetLoginDigest($binaryToken) {
-
-    //     $return['Success'] = false;
-
-    //     // Schritt1: SharepointCookie abrufen
-    //     $headers = array('Authorization' => "BPOSIDCRL $binaryToken",
-    //                      'X-IDCRL_ACCEPTED' => 't');
-
-    //     $response = Unirest\Request::get('https://maltesercloud.sharepoint.com/_vti_bin/idcrl.svc/', $headers);
-    //     if ($response->code == 200) {
-
-    //         $SPOIDCRL = '';
-    //         if (array_key_exists('set-cookie', $response->headers)) {
-    //             $SPOIDCRL = substr($response->headers['set-cookie'], stripos($response->headers['set-cookie'], 'SPOIDCRL='));
-    //         } 
-    //         if (array_key_exists('Set-Cookie', $response->headers)) {
-    //             $SPOIDCRL = substr($response->headers['Set-Cookie'], stripos($response->headers['Set-Cookie'], 'SPOIDCRL='));
-    //         }
-    //         $SPOIDCRL = substr($SPOIDCRL, 0, stripos($SPOIDCRL, ';'));
-    //         $return['SPOIDCRL'] = $SPOIDCRL;
-
-    //         // Schritt2: SharepointDigest abrufen
-    //         $headers = array('Accept' => '*/*', 'Content-Type' => 'text/xml;',
-    //                          'X-RequestForceAuthentication' => 'true',
-    //                          'X-FORMS_BASED_AUTH_ACCEPTED' => 'f',
-    //                          'Accept-Encoding' => 'gzip, deflate',
-    //                          'SOAPAction' => 'http://schemas.microsoft.com/sharepoint/soap/GetUpdatedFormDigestInformation');
-    //         $soap = "<?xml version='1.0' encoding='utf-8'>
-    //                 <soap:Envelope
-    //                     xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
-    //                     xmlns:xsd='http://www.w3.org/2001/XMLSchema'
-    //                     xmlns:soap='http://schemas.xmlsoap.org/soap/envelope/'>
-    //                     <soap:Body>
-    //                         <GetUpdatedFormDigestInformation
-    //                             xmlns='http://schemas.microsoft.com/sharepoint/soap/' />
-    //                     </soap:Body>
-    //                 </soap:Envelope>";
-
-    //         $response = Unirest\Request::post('https://maltesercloud.sharepoint.com/_vti_bin/sites.asmx', $headers, $soap);
-    //         if ($response->code == 200) {
-                
-    //             $DIGEST = substr($response->raw_body, stripos($response->raw_body, '<DigestValue>') + 13);
-    //             $DIGEST = substr($DIGEST, 0, stripos($DIGEST, '</DigestValue>'));
-
-    //             $return['DIGEST'] = $DIGEST;
-    //             $return['Success'] = true;
-
-    //         }
-            
-            
-    //     }
-
-    //     return $return;
-
-    // }

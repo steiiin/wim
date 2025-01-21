@@ -2,8 +2,8 @@
 
 namespace WIM\SharepointApi\Unirest\Request;
 
-use Unirest\Request as Request;
-use Unirest\Exception as Exception;
+use WIM\SharepointApi\Unirest\Request as Request;
+use WIM\SharepointApi\Unirest\Exception as Exception;
 
 class Body
 {
